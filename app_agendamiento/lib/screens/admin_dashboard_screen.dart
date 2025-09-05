@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:app_agendamiento/screens/professionals_screen.dart';
+import 'package:app_agendamiento/screens/services_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -98,7 +99,12 @@ class AdminDashboardScreen extends StatelessWidget {
                   title: const Text('Gestionar Servicios'),
                   trailing: const Icon(Icons.arrow_forward_ios),
                   onTap: () {
-                    // TODO: Navegar a la pantalla de gestión de servicios
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ServicesScreen(salonId: salonId),
+                      ),
+                    );
                   },
                 ),
               ],
