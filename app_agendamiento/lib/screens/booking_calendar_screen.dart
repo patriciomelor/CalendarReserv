@@ -1,12 +1,12 @@
 // lib/screens/booking_calendar_screen.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-// NUEVO: Clase auxiliar para manejar el estado de cada bloque de tiempo
+// Clase auxiliar para manejar el estado de cada bloque de tiempo
 class TimeSlot {
   final TimeOfDay time;
   bool isBooked;
@@ -35,11 +35,9 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   DateTime? _selectedDay;
   TimeOfDay? _selectedTime;
 
-  // MODIFICADO: Ahora guardamos una lista de objetos TimeSlot
   List<TimeSlot> _timeSlots = [];
   bool _isLoadingSlots = false;
 
-  // MODIFICADO: La función ahora genera TODOS los horarios y marca los que están reservados
   Future<void> _generateTimeSlots(DateTime day) async {
     setState(() {
       _isLoadingSlots = true;
@@ -124,9 +122,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           }
         }
         potentialSlots.add(TimeSlot(time: slotTime, isBooked: isBooked));
-        currentTime = currentTime.add(
-          const Duration(minutes: 15),
-        ); // Puedes ajustar el intervalo
+        currentTime = currentTime.add(const Duration(minutes: 15));
       }
 
       setState(() {
@@ -141,12 +137,22 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     }
   }
 
-  // MODIFICADO: La función ahora usa una transacción para evitar dobles reservas
+  // MODIFICADO: Lógica de reserva simplificada y corregida sin transacciones complejas.
   Future<void> _bookAppointment() async {
     if (_selectedDay == null || _selectedTime == null) return;
 
+    // Mostrar un diálogo de carga para evitar múltiples toques
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      Navigator.of(context).pop(); // Cierra el diálogo de carga
+      return;
+    }
 
     final serviceData = widget.service.data() as Map<String, dynamic>;
     final serviceDuration = serviceData['duracion'] as int;
@@ -158,44 +164,68 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       _selectedTime!.minute,
     );
     final endTime = startTime.add(Duration(minutes: serviceDuration));
-
     final firestore = FirebaseFirestore.instance;
 
     try {
-      await firestore.runTransaction((transaction) async {
-        // 1. Volver a verificar la disponibilidad DENTRO de la transacción
-        final appointmentsSnapshot = await firestore
-            .collection('appointments')
-            .where('professionalId', isEqualTo: widget.professional.id)
-            .where('startTime', isLessThan: Timestamp.fromDate(endTime))
-            .where('endTime', isGreaterThan: Timestamp.fromDate(startTime))
-            .limit(1)
-            .get();
+      // 1. Re-verificar la disponibilidad justo antes de escribir en la base de datos
+      final startOfDay = DateTime(
+        startTime.year,
+        startTime.month,
+        startTime.day,
+      );
+      final appointmentsOnDay = await firestore
+          .collection('appointments')
+          .where('professionalId', isEqualTo: widget.professional.id)
+          .where(
+            'startTime',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
+          .where(
+            'startTime',
+            isLessThan: Timestamp.fromDate(
+              startOfDay.add(const Duration(days: 1)),
+            ),
+          )
+          .get();
 
-        if (appointmentsSnapshot.docs.isNotEmpty) {
-          // Si encontramos una cita, significa que alguien la reservó.
-          throw Exception('Este horario ya no está disponible.');
+      bool isSlotStillFree = true;
+      for (final doc in appointmentsOnDay.docs) {
+        final existingStartTime = (doc.data()['startTime'] as Timestamp)
+            .toDate();
+        final existingEndTime = (doc.data()['endTime'] as Timestamp).toDate();
+        if (startTime.isBefore(existingEndTime) &&
+            endTime.isAfter(existingStartTime)) {
+          isSlotStillFree = false;
+          break;
         }
+      }
 
-        // 2. Si está libre, creamos la nueva cita
-        final userDoc = await transaction.get(
-          firestore.collection('users').doc(currentUser.uid),
+      if (!isSlotStillFree) {
+        throw Exception(
+          'Este horario ya no está disponible. Por favor, elige otro.',
         );
-        final customerName = userDoc.data()?['nombre'] ?? 'Cliente';
+      }
 
-        transaction.set(firestore.collection('appointments').doc(), {
-          'salonId': widget.salonId,
-          'serviceId': widget.service.id,
-          'professionalId': widget.professional.id,
-          'customerId': currentUser.uid,
-          'customerName': customerName,
-          'startTime': Timestamp.fromDate(startTime),
-          'endTime': Timestamp.fromDate(endTime),
-          'status': 'confirmada',
-        });
+      // 2. Si el horario sigue libre, crear la cita
+      final userDoc = await firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      final customerName = userDoc.data()?['nombre'] ?? 'Cliente';
+
+      await firestore.collection('appointments').add({
+        'salonId': widget.salonId,
+        'serviceId': widget.service.id,
+        'professionalId': widget.professional.id,
+        'customerId': currentUser.uid,
+        'customerName': customerName,
+        'startTime': Timestamp.fromDate(startTime),
+        'endTime': Timestamp.fromDate(endTime),
+        'status': 'confirmada',
       });
 
-      // Si la transacción es exitosa...
+      if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -207,10 +237,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         Navigator.of(context).popUntil((_) => count++ >= 3);
       }
     } catch (e) {
+      if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
+        // Recargar los horarios por si algo cambió
+        _generateTimeSlots(_selectedDay!);
       }
     }
   }
@@ -262,7 +296,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
               ),
               const Divider(height: 30),
 
-              // MODIFICADO: La UI ahora se construye basada en el estado de cada TimeSlot
               if (_selectedDay != null)
                 _isLoadingSlots
                     ? const Center(child: CircularProgressIndicator())
@@ -280,17 +313,15 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                           return ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isSelected
-                                  ? Colors
-                                        .deepPurple // Seleccionado
+                                  ? Colors.deepPurple
                                   : isBooked
-                                  ? Colors.grey[400] // Reservado
-                                  : Colors.green, // Disponible
+                                  ? Colors.grey[400]
+                                  : Colors.green,
                               foregroundColor: Colors.white,
                             ),
                             onPressed: isBooked
                                 ? null
                                 : () {
-                                    // Deshabilitar si está reservado
                                     setState(() {
                                       _selectedTime = slot.time;
                                     });
@@ -300,7 +331,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                         }).toList(),
                       ),
 
-              // NUEVO: Leyenda de colores
               if (_selectedDay != null &&
                   !_isLoadingSlots &&
                   _timeSlots.isNotEmpty)
@@ -347,7 +377,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     );
   }
 
-  // NUEVO: Widget auxiliar para la leyenda
   Widget _buildLegendItem(Color color, String text) {
     return Row(
       children: [
