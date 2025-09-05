@@ -1,6 +1,8 @@
 // lib/screens/professionals_screen.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 class ProfessionalsScreen extends StatefulWidget {
@@ -13,36 +15,57 @@ class ProfessionalsScreen extends StatefulWidget {
 }
 
 class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
-  // Controladores para el formulario del diálogo
   final _nameController = TextEditingController();
   final _specialtyController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  // Función para mostrar el diálogo de "Añadir Profesional"
   void _showAddProfessionalDialog() {
-    // Limpiamos los controladores antes de mostrar el diálogo
     _nameController.clear();
     _specialtyController.clear();
+    _emailController.clear();
+    _passwordController.clear();
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Añadir Nuevo Profesional'),
-          content: Column(
-            mainAxisSize: MainAxisSize
-                .min, // Para que el diálogo no ocupe toda la pantalla
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nombre Completo'),
-              ),
-              TextField(
-                controller: _specialtyController,
-                decoration: const InputDecoration(
-                  labelText: 'Especialidad (ej: Peluquero)',
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre Completo',
+                  ),
                 ),
-              ),
-            ],
+                TextField(
+                  controller: _specialtyController,
+                  decoration: const InputDecoration(labelText: 'Especialidad'),
+                ),
+                const Divider(height: 20),
+                const Text(
+                  'Credenciales de Acceso',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email de Acceso',
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                TextField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña Provisional',
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -62,22 +85,63 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
     );
   }
 
-  // Función para añadir el profesional a Firestore
   Future<void> _addProfessional() async {
     final name = _nameController.text.trim();
     final specialty = _specialtyController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    if (name.isNotEmpty && specialty.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('professionals').add({
-        'nombre': name,
-        'especialidad': specialty,
-        'salonId': widget.salonId, // Usamos el ID del salón actual
-      });
+    if (name.isNotEmpty &&
+        specialty.isNotEmpty &&
+        email.isNotEmpty &&
+        password.length >= 6) {
+      try {
+        final tempApp = await Firebase.initializeApp(
+          name: 'tempProfessionalCreation',
+          options: Firebase.app().options,
+        );
+        final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+
+        UserCredential userCredential = await tempAuth
+            .createUserWithEmailAndPassword(email: email, password: password);
+        final professionalUid = userCredential.user!.uid;
+        await tempApp.delete();
+
+        final professionalDocRef = await FirebaseFirestore.instance
+            .collection('professionals')
+            .add({
+              'nombre': name,
+              'especialidad': specialty,
+              'salonId': widget.salonId,
+              'uid': professionalUid, // Vínculo con su cuenta de usuario
+            });
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(professionalUid)
+            .set({
+              'nombre': name,
+              'email': email,
+              'rol': 'professional', // NUEVO ROL
+              'salonId': widget.salonId,
+              'professionalId': professionalDocRef.id, // Vínculo inverso
+            });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al crear profesional: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
-  // Función para eliminar un profesional
   Future<void> _deleteProfessional(String docId) async {
+    // En una app real, también se debería deshabilitar o eliminar el usuario de Firebase Auth.
+    // Por ahora, solo lo eliminamos de la colección de profesionales.
     await FirebaseFirestore.instance
         .collection('professionals')
         .doc(docId)
@@ -91,49 +155,32 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
         title: const Text('Gestionar Profesionales'),
         backgroundColor: Colors.indigo,
       ),
-      // El FloatingActionButton es el botón redondo en la esquina
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddProfessionalDialog,
         backgroundColor: Colors.indigo,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      // Usamos un StreamBuilder para escuchar los cambios en tiempo real
       body: StreamBuilder<QuerySnapshot>(
-        // El stream es nuestra consulta a Firestore
         stream: FirebaseFirestore.instance
             .collection('professionals')
-            .where(
-              'salonId',
-              isEqualTo: widget.salonId,
-            ) // Filtramos por el salón actual
+            .where('salonId', isEqualTo: widget.salonId)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
-            return const Center(child: Text('Ocurrió un error.'));
-          }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(
-              child: Text(
-                'No hay profesionales registrados.\n¡Añade uno con el botón +!',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18),
-              ),
+              child: Text('No hay profesionales registrados.'),
             );
           }
-
-          // Si todo está bien, construimos la lista
           final professionals = snapshot.data!.docs;
-
           return ListView.builder(
             itemCount: professionals.length,
             itemBuilder: (context, index) {
               final professional = professionals[index];
               final professionalData =
                   professional.data() as Map<String, dynamic>;
-
               return ListTile(
                 leading: const Icon(Icons.person),
                 title: Text(professionalData['nombre'] ?? 'Sin nombre'),

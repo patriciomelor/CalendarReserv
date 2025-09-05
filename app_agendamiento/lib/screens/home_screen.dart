@@ -6,6 +6,7 @@ import 'package:app_agendamiento/screens/super_admin_dashboard_screen.dart'; // 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:app_agendamiento/screens/professional_agenda_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,11 +37,13 @@ class _HomeScreenState extends State<HomeScreen> {
             final userData = snapshot.data!.data() as Map<String, dynamic>;
             final userRole = userData['rol']; // Obtenemos el rol
 
-            // MODIFICADO: Añadimos la nueva lógica para el super-admin
             if (userRole == 'super-admin') {
               return SuperAdminDashboardScreen(userData: userData);
             } else if (userRole == 'admin') {
               return AdminDashboardScreen(userData: userData);
+            } else if (userRole == 'professional') {
+              // <-- AÑADIR ESTA CONDICIÓN
+              return ProfessionalAgendaScreen(userData: userData);
             } else {
               return CustomerHomeScreen(userData: userData);
             }
