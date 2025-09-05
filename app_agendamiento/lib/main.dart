@@ -4,12 +4,14 @@ import 'package:app_agendamiento/screens/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   // Asegúrate de que los widgets de Flutter estén listos
   WidgetsFlutterBinding.ensureInitialized();
   // Inicializa Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeDateFormatting('es_ES', null);
   runApp(const MyApp());
 }
 

@@ -79,14 +79,15 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   Future<void> _addService() async {
     final name = _nameController.text.trim();
+    // Estas líneas convierten el texto de los campos a números (int)
     final price = int.tryParse(_priceController.text.trim());
     final duration = int.tryParse(_durationController.text.trim());
 
     if (name.isNotEmpty && price != null && duration != null) {
       await FirebaseFirestore.instance.collection('services').add({
         'nombre': name,
-        'precio': price,
-        'duracion': duration,
+        'precio': price, // Se guarda como número
+        'duracion': duration, // Se guarda como número
         'salonId': widget.salonId,
       });
     }
