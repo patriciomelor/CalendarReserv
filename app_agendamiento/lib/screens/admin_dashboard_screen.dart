@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_agendamiento/screens/professionals_screen.dart';
 import 'package:app_agendamiento/screens/services_screen.dart';
 
@@ -26,6 +27,14 @@ class AdminDashboardScreen extends StatelessWidget {
         title: const Text('Panel de Administración'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              FirebaseAuth.instance.signOut();
+            },
+          ),
+        ],
       ),
       // Usamos otro FutureBuilder para obtener los datos específicos del salón.
       body: FutureBuilder<DocumentSnapshot>(
