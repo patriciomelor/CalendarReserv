@@ -2,9 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final VoidCallback showLoginPage; // Función para volver al login
+  final VoidCallback showLoginPage;
   const RegisterScreen({super.key, required this.showLoginPage});
 
   @override
@@ -12,39 +13,52 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController =
-      TextEditingController(); // Para confirmar la contraseña
+  final _confirmPasswordController = TextEditingController();
   String _errorMessage = '';
+  bool _isLoading = false; // NUEVO: Variable para controlar el estado de carga
 
   Future<void> signUp() async {
-    // Validamos que las contraseñas coincidan
+    // NUEVO: Si ya está cargando, no hacemos nada.
+    if (_isLoading) return;
+
+    // Validaciones
     if (_passwordController.text.trim() !=
         _confirmPasswordController.text.trim()) {
-      setState(() {
-        _errorMessage = 'Las contraseñas no coinciden.';
-      });
-      return; // Detenemos la ejecución si no coinciden
+      setState(() => _errorMessage = 'Las contraseñas no coinciden.');
+      return;
+    }
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Por favor, ingresa tu nombre.');
+      return;
     }
 
-    showDialog(
-      context: context,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
+    // NUEVO: Ponemos la UI en estado de carga
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
     try {
-      // Usamos createUserWithEmailAndPassword para registrar un nuevo usuario
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      Navigator.of(context).pop();
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+            'nombre': _nameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'rol': 'cliente',
+          });
+      // La navegación la maneja AuthGate, no necesitamos hacer nada más.
     } on FirebaseAuthException catch (e) {
-      Navigator.of(context).pop();
       setState(() {
-        // Mensajes de error más específicos para el registro
         if (e.code == 'weak-password') {
           _errorMessage = 'La contraseña es muy débil.';
         } else if (e.code == 'email-already-in-use') {
@@ -52,12 +66,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         } else {
           _errorMessage = 'Ocurrió un error. Verifica tus datos.';
         }
+        _isLoading = false; // NUEVO: Dejamos de cargar si hay un error
       });
     }
   }
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -85,8 +101,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 50),
-
-                // Campo de Email
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre Completo',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -100,8 +126,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 20),
-
-                // Campo de Contraseña
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
@@ -115,8 +139,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Campo de Confirmar Contraseña
                 TextField(
                   controller: _confirmPasswordController,
                   obscureText: true,
@@ -130,7 +152,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
@@ -140,11 +161,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
 
-                // Botón de Registrarse
+                // MODIFICADO: El botón ahora cambia para mostrar un spinner
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: signUp,
+                    onPressed: _isLoading
+                        ? null
+                        : signUp, // Desactivamos el botón mientras carga
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(20),
                       shape: RoundedRectangleBorder(
@@ -152,15 +175,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       backgroundColor: Colors.deepPurple,
                     ),
-                    child: const Text(
-                      'Registrarse',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                            color: Colors.white,
+                          ) // Muestra el spinner
+                        : const Text(
+                            'Registrarse',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ), // Muestra el texto
                   ),
                 ),
                 const SizedBox(height: 25),
-
-                // Opción para iniciar sesión
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

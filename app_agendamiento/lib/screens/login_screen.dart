@@ -3,10 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// StatefulWidget nos permite manejar estado, como el texto en los campos de email/contraseña.
 class LoginScreen extends StatefulWidget {
-  final VoidCallback
-  showRegisterPage; // Una función para cambiar a la pantalla de registro
+  final VoidCallback showRegisterPage;
   const LoginScreen({super.key, required this.showRegisterPage});
 
   @override
@@ -14,33 +12,30 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para obtener el texto de los campos de entrada.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String _errorMessage = '';
+  bool _isLoading = false; // NUEVO: Variable para controlar el estado de carga
 
-  // Función para manejar el inicio de sesión.
   Future<void> signIn() async {
-    // Muestra un círculo de carga mientras se procesa la autenticación.
-    showDialog(
-      context: context,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
+    // NUEVO: Si ya está cargando, no hacemos nada.
+    if (_isLoading) return;
+
+    // NUEVO: Ponemos la UI en estado de carga
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
     try {
-      // Intenta iniciar sesión con Firebase Auth.
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // Si el inicio de sesión es exitoso, cierra el diálogo de carga.
-      Navigator.of(context).pop();
+      // La navegación es manejada por AuthGate, no necesitamos hacer nada aquí.
+      // El widget será destruido, así que no es necesario cambiar _isLoading a false.
     } on FirebaseAuthException catch (e) {
-      // Si hay un error, cierra el diálogo de carga y muestra un mensaje.
-      Navigator.of(context).pop();
       setState(() {
-        // Personaliza los mensajes de error para ser más amigables.
         if (e.code == 'user-not-found' ||
             e.code == 'wrong-password' ||
             e.code == 'invalid-credential') {
@@ -48,11 +43,12 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           _errorMessage = 'Ocurrió un error. Inténtalo de nuevo.';
         }
+        _isLoading = false; // NUEVO: Dejamos de cargar si hay un error
       });
     }
+    // MODIFICADO: Ya no es necesario un `finally` porque el estado se maneja directamente.
   }
 
-  // Liberamos los controladores cuando el widget se destruye para evitar fugas de memoria.
   @override
   void dispose() {
     _emailController.dispose();
@@ -62,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold es la estructura básica de una pantalla en Material Design.
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: SafeArea(
@@ -72,7 +67,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Título
                 const Text(
                   '¡Hola de Nuevo!',
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
@@ -83,8 +77,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 50),
-
-                // Campo de Email
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -98,11 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 20),
-
-                // Campo de Contraseña
                 TextField(
                   controller: _passwordController,
-                  obscureText: true, // Oculta el texto de la contraseña
+                  obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     border: OutlineInputBorder(
@@ -113,8 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Mensaje de Error (si existe)
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
@@ -124,11 +112,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                // Botón de Iniciar Sesión
+                // MODIFICADO: El botón ahora cambia para mostrar un spinner
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: signIn,
+                    onPressed: _isLoading
+                        ? null
+                        : signIn, // Desactivamos el botón mientras carga
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(20),
                       shape: RoundedRectangleBorder(
@@ -136,15 +126,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       backgroundColor: Colors.deepPurple,
                     ),
-                    child: const Text(
-                      'Iniciar Sesión',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                            color: Colors.white,
+                          ) // Muestra el spinner
+                        : const Text(
+                            'Iniciar Sesión',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ), // Muestra el texto
                   ),
                 ),
                 const SizedBox(height: 25),
-
-                // Opción para registrarse
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
