@@ -2,6 +2,7 @@
 
 import 'package:app_agendamiento/screens/admin_dashboard_screen.dart';
 import 'package:app_agendamiento/screens/customer_home_screen.dart';
+import 'package:app_agendamiento/screens/super_admin_dashboard_screen.dart'; // NUEVO IMPORT
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -19,8 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // El AppBar y el botón de logout ahora están en las pantallas específicas de cada rol.
-      // Este widget es solo un "despachador".
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
             .collection('users')
@@ -35,13 +34,14 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           if (snapshot.hasData && snapshot.data!.exists) {
             final userData = snapshot.data!.data() as Map<String, dynamic>;
+            final userRole = userData['rol']; // Obtenemos el rol
 
-            // LA LÓGICA CLAVE: Revisamos el rol del usuario
-            if (userData['rol'] == 'admin') {
-              // Si es admin, mostramos el Dashboard de Administrador
+            // MODIFICADO: Añadimos la nueva lógica para el super-admin
+            if (userRole == 'super-admin') {
+              return SuperAdminDashboardScreen(userData: userData);
+            } else if (userRole == 'admin') {
               return AdminDashboardScreen(userData: userData);
             } else {
-              // Si no, mostramos la pantalla de Cliente
               return CustomerHomeScreen(userData: userData);
             }
           }
