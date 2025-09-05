@@ -144,9 +144,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
               return ListTile(
                 leading: const Icon(Icons.cut),
                 title: Text(serviceData['nombre'] ?? 'Sin nombre'),
-                subtitle: Text(
-                  'Precio: \$${price} - Duración: ${duration} min',
-                ),
+                subtitle: Text('Precio: \$$price - Duración: $duration min'),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   onPressed: () => _deleteService(service.id),
