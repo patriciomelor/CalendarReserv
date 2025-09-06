@@ -3,8 +3,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // NUEVO: Import para usar el portapapeles
 import 'package:intl/intl.dart';
-import 'package:app_agendamiento/screens/salon_agenda_screen.dart'; // Reutilizamos la clase AppointmentDetails
 
 class ProfessionalAgendaScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -16,6 +16,7 @@ class ProfessionalAgendaScreen extends StatelessWidget {
     final startOfToday = DateTime(now.year, now.month, now.day);
     final endOfToday = startOfToday.add(const Duration(days: 1));
     final professionalId = userData['professionalId'];
+    final salonId = userData['salonId']; // Obtenemos el salonId del usuario
 
     return Scaffold(
       appBar: AppBar(
@@ -23,6 +24,25 @@ class ProfessionalAgendaScreen extends StatelessWidget {
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
+          // NUEVO: Botón para copiar el enlace
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Copiar mi enlace de reserva',
+            onPressed: () {
+              if (salonId != null && professionalId != null) {
+                final webUrl = Uri.base;
+                final bookingUrl =
+                    '${webUrl.origin}/#/book/$salonId/$professionalId';
+                Clipboard.setData(ClipboardData(text: bookingUrl));
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Enlace de reserva copiado al portapapeles.'),
+                  ),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => FirebaseAuth.instance.signOut(),
@@ -38,10 +58,7 @@ class ProfessionalAgendaScreen extends StatelessWidget {
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('appointments')
-                  .where(
-                    'professionalId',
-                    isEqualTo: professionalId,
-                  ) // Filtro por ID de profesional
+                  .where('professionalId', isEqualTo: professionalId)
                   .where(
                     'startTime',
                     isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday),

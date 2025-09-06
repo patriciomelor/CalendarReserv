@@ -6,8 +6,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback showLoginPage;
-  const RegisterScreen({super.key, required this.showLoginPage});
-
+  final VoidCallback? onGuestContinue;
+  const RegisterScreen({
+    super.key,
+    required this.showLoginPage,
+    this.onGuestContinue, // Y esta
+  });
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }

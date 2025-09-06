@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ProfessionalsScreen extends StatefulWidget {
   final String salonId;
@@ -187,9 +188,36 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                 subtitle: Text(
                   professionalData['especialidad'] ?? 'Sin especialidad',
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => _deleteProfessional(professional.id),
+                // MODIFICADO: Cambiamos el trailing por un Row con dos botones
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.share, color: Colors.blue),
+                      tooltip: 'Copiar enlace de reserva',
+                      onPressed: () {
+                        // Obtenemos la URL base de la web
+                        final webUrl = Uri.base;
+                        // Construimos el enlace directo
+                        final bookingUrl =
+                            '${webUrl.origin}/#/book/${widget.salonId}/${professional.id}';
+                        // Copiamos al portapapeles
+                        Clipboard.setData(ClipboardData(text: bookingUrl));
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Enlace de reserva copiado al portapapeles.',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () => _deleteProfessional(professional.id),
+                    ),
+                  ],
                 ),
               );
             },

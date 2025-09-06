@@ -1,6 +1,7 @@
 // lib/main.dart
 
 import 'package:app_agendamiento/screens/auth_gate.dart';
+import 'package:app_agendamiento/screens/public_booking_page.dart'; // NUEVO IMPORT
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -21,41 +22,37 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'App de Agendamiento',
-
-      // TEMA PARA MODO CLARO (EL QUE YA TENÍAMOS, PERO MÁS DETALLADO)
       theme: ThemeData(
         brightness: Brightness.light,
         primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: Colors.grey[100], // Fondo un poco más suave
-        appBarTheme: const AppBarTheme(
-          foregroundColor: Colors.white, // Color de texto e íconos en AppBar
-        ),
       ),
-
-      // TEMA PARA MODO OSCURO
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(
-          0xFF121212,
-        ), // Fondo oscuro estándar
-        cardColor: const Color(0xFF1E1E1E), // Color de las tarjetas
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E1E1E), // AppBar un poco más oscura
-          foregroundColor: Colors.white,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white, // Color del texto de los botones
-          ),
-        ),
-        // Puedes seguir personalizando más colores y estilos aquí
       ),
-
-      // Esto le dice a la app que use el tema del sistema (claro u oscuro)
       themeMode: ThemeMode.system,
 
-      home: const AuthGate(),
+      // MODIFICADO: Usamos onGenerateRoute para manejar URLs dinámicas
+      onGenerateRoute: (settings) {
+        // Ejemplo de URL: /book/salonId/professionalId
+        if (settings.name != null && settings.name!.startsWith('/book/')) {
+          final parts = settings.name!.split('/');
+          if (parts.length == 4) {
+            // Esperamos /book/salonId/professionalId
+            final salonId = parts[2];
+            final professionalId = parts[3];
+            return MaterialPageRoute(
+              builder: (context) => PublicBookingPage(
+                salonId: salonId,
+                professionalId: professionalId,
+              ),
+            );
+          }
+        }
+        // Si la URL no coincide, mostramos el flujo normal de autenticación
+        return MaterialPageRoute(builder: (context) => const AuthGate());
+      },
+      // home: const AuthGate(), // 'home' y 'onGenerateRoute' no pueden usarse juntos
     );
   }
 }
