@@ -136,7 +136,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     }
   }
 
-  // **** FUNCIÓN _bookAppointment COMPLETAMENTE REESCRITA SIN TRANSACCIÓN ****
   Future<void> _bookAppointment() async {
     if (_selectedDay == null || _selectedTime == null) return;
 
@@ -192,7 +191,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       );
       final endTime = startTime.add(Duration(minutes: serviceDuration));
 
-      // 1. Re-verificación de disponibilidad justo antes de escribir
       final query = FirebaseFirestore.instance
           .collection('appointments')
           .where('professionalId', isEqualTo: widget.professional.id)
@@ -207,7 +205,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         );
       }
 
-      // 2. Si está libre, crear la cita
       await FirebaseFirestore.instance.collection('appointments').add({
         'salonId': widget.salonId,
         'serviceId': widget.service.id,
@@ -221,7 +218,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         'isGuest': isGuestBooking,
       });
 
-      // 3. Enviar notificación por correo
+      if (mounted) Navigator.of(context).pop();
+
       final formattedDate = DateFormat(
         'EEEE d \'de\' MMMM, yyyy',
         'es_ES',
@@ -233,8 +231,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         htmlBody:
             '''<h1>¡Hola ${customerName}!</h1><p>Tu cita ha sido agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p>''',
       );
-
-      if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
 
       if (mounted) {
         if (isGuestBooking) {
@@ -265,6 +261,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     }
   }
 
+  // **** FUNCIÓN _showGuestDetailsDialog QUE FALTABA ****
   Future<Map<String, String>?> _showGuestDetailsDialog() async {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
