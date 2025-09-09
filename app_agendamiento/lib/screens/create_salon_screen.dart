@@ -1,5 +1,6 @@
 // lib/screens/create_salon_screen.dart
 
+import 'package:app_agendamiento/services/notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -106,6 +107,16 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
         setState(() => _isLoading = false);
       }
     }
+    await NotificationService.sendEmail(
+      to: _adminEmailController.text.trim(),
+      subject: '¡Bienvenido! Tu cuenta de administrador ha sido creada.',
+      htmlBody:
+          '''
+    <h1>¡Hola ${_adminNameController.text.trim()}!</h1>
+    <p>Tu cuenta para administrar el salón "${_salonNameController.text.trim()}" ha sido creada con éxito.</p>
+    <p>Puedes iniciar sesión con: <strong>${_adminEmailController.text.trim()}</strong></p>
+  ''',
+    );
   }
 
   @override

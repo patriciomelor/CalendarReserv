@@ -1,16 +1,16 @@
 // lib/screens/booking_calendar_screen.dart
 
+import 'package:app_agendamiento/screens/booking_success_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:app_agendamiento/services/notification_service.dart';
 
-// Clase auxiliar para manejar el estado de cada bloque de tiempo
 class TimeSlot {
   final TimeOfDay time;
   bool isBooked;
-
   TimeSlot({required this.time, this.isBooked = false});
 }
 
@@ -34,7 +34,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   TimeOfDay? _selectedTime;
-
   List<TimeSlot> _timeSlots = [];
   bool _isLoadingSlots = false;
 
@@ -137,123 +136,200 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     }
   }
 
-  // MODIFICADO: Lógica de reserva simplificada y corregida sin transacciones complejas.
+  // **** FUNCIÓN _bookAppointment COMPLETAMENTE REESCRITA SIN TRANSACCIÓN ****
   Future<void> _bookAppointment() async {
     if (_selectedDay == null || _selectedTime == null) return;
 
-    // Mostrar un diálogo de carga para evitar múltiples toques
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      Navigator.of(context).pop(); // Cierra el diálogo de carga
-      return;
-    }
-
-    final serviceData = widget.service.data() as Map<String, dynamic>;
-    final serviceDuration = serviceData['duracion'] as int;
-    final startTime = DateTime(
-      _selectedDay!.year,
-      _selectedDay!.month,
-      _selectedDay!.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
-    );
-    final endTime = startTime.add(Duration(minutes: serviceDuration));
-    final firestore = FirebaseFirestore.instance;
+    var currentUser = FirebaseAuth.instance.currentUser;
+    final bool isGuestBooking = currentUser == null || currentUser.isAnonymous;
 
     try {
-      // 1. Re-verificar la disponibilidad justo antes de escribir en la base de datos
-      final startOfDay = DateTime(
-        startTime.year,
-        startTime.month,
-        startTime.day,
-      );
-      final appointmentsOnDay = await firestore
-          .collection('appointments')
-          .where('professionalId', isEqualTo: widget.professional.id)
-          .where(
-            'startTime',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-          )
-          .where(
-            'startTime',
-            isLessThan: Timestamp.fromDate(
-              startOfDay.add(const Duration(days: 1)),
-            ),
-          )
-          .get();
+      String customerName;
+      String customerEmail;
+      String customerId;
 
-      bool isSlotStillFree = true;
-      for (final doc in appointmentsOnDay.docs) {
-        final existingStartTime = (doc.data()['startTime'] as Timestamp)
-            .toDate();
-        final existingEndTime = (doc.data()['endTime'] as Timestamp).toDate();
-        if (startTime.isBefore(existingEndTime) &&
-            endTime.isAfter(existingStartTime)) {
-          isSlotStillFree = false;
-          break;
+      if (isGuestBooking) {
+        final guestDetails = await _showGuestDetailsDialog();
+        if (guestDetails == null) {
+          Navigator.of(context).pop();
+          return;
         }
+        customerName = guestDetails['name']!;
+        customerEmail = guestDetails['email']!;
+
+        if (currentUser == null) {
+          final userCredential = await FirebaseAuth.instance
+              .signInAnonymously();
+          currentUser = userCredential.user;
+        }
+        customerId = currentUser!.uid;
+      } else {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .get();
+        customerName = userDoc.data()?['nombre'] ?? 'Cliente';
+        customerEmail = userDoc.data()?['email'] ?? '';
+        customerId = currentUser.uid;
       }
 
-      if (!isSlotStillFree) {
+      final serviceData = widget.service.data() as Map<String, dynamic>;
+      final professionalData =
+          widget.professional.data() as Map<String, dynamic>;
+      final serviceDuration = serviceData['duracion'] as int;
+      final startTime = DateTime(
+        _selectedDay!.year,
+        _selectedDay!.month,
+        _selectedDay!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+      final endTime = startTime.add(Duration(minutes: serviceDuration));
+
+      // 1. Re-verificación de disponibilidad justo antes de escribir
+      final query = FirebaseFirestore.instance
+          .collection('appointments')
+          .where('professionalId', isEqualTo: widget.professional.id)
+          .where('startTime', isLessThan: Timestamp.fromDate(endTime))
+          .where('endTime', isGreaterThan: Timestamp.fromDate(startTime))
+          .limit(1);
+
+      final existingAppointments = await query.get();
+      if (existingAppointments.docs.isNotEmpty) {
         throw Exception(
           'Este horario ya no está disponible. Por favor, elige otro.',
         );
       }
 
-      // 2. Si el horario sigue libre, crear la cita
-      final userDoc = await firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
-      final customerName = userDoc.data()?['nombre'] ?? 'Cliente';
-
-      await firestore.collection('appointments').add({
+      // 2. Si está libre, crear la cita
+      await FirebaseFirestore.instance.collection('appointments').add({
         'salonId': widget.salonId,
         'serviceId': widget.service.id,
         'professionalId': widget.professional.id,
-        'customerId': currentUser.uid,
+        'customerId': customerId,
         'customerName': customerName,
+        'customerEmail': customerEmail,
         'startTime': Timestamp.fromDate(startTime),
         'endTime': Timestamp.fromDate(endTime),
         'status': 'confirmada',
+        'isGuest': isGuestBooking,
       });
+
+      // 3. Enviar notificación por correo
+      final formattedDate = DateFormat(
+        'EEEE d \'de\' MMMM, yyyy',
+        'es_ES',
+      ).format(startTime);
+      final formattedTime = DateFormat('hh:mm a').format(startTime);
+      await NotificationService.sendEmail(
+        to: customerEmail,
+        subject: '¡Tu cita ha sido confirmada!',
+        htmlBody:
+            '''<h1>¡Hola ${customerName}!</h1><p>Tu cita ha sido agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p>''',
+      );
 
       if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Cita agendada con éxito!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        int count = 0;
-        Navigator.of(context).popUntil((_) => count++ >= 3);
+        if (isGuestBooking) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const BookingSuccessScreen(),
+            ),
+            (route) => false,
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('¡Cita agendada con éxito!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
     } catch (e) {
-      if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
-
+      if (mounted) Navigator.of(context).pop();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
-        // Recargar los horarios por si algo cambió
         _generateTimeSlots(_selectedDay!);
       }
     }
   }
 
+  Future<Map<String, String>?> _showGuestDetailsDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Datos para la Reserva'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tu Nombre Completo',
+                  ),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Campo requerido' : null,
+                ),
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tu Correo Electrónico',
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) => value!.isEmpty || !value.contains('@')
+                      ? 'Email inválido'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop({
+                    'name': nameController.text.trim(),
+                    'email': emailController.text.trim(),
+                  });
+                }
+              },
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  DateTime startOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
   @override
   Widget build(BuildContext context) {
     final serviceData = widget.service.data() as Map<String, dynamic>;
     final professionalData = widget.professional.data() as Map<String, dynamic>;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('3. Selecciona Fecha y Hora'),
@@ -278,7 +354,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               TableCalendar(
                 locale: 'es_ES',
                 firstDay: DateTime.now(),
@@ -295,7 +370,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                 },
               ),
               const Divider(height: 30),
-
               if (_selectedDay != null)
                 _isLoadingSlots
                     ? const Center(child: CircularProgressIndicator())
@@ -309,7 +383,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                         children: _timeSlots.map((slot) {
                           final isSelected = _selectedTime == slot.time;
                           final isBooked = slot.isBooked;
-
                           return ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isSelected
@@ -330,7 +403,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                           );
                         }).toList(),
                       ),
-
               if (_selectedDay != null &&
                   !_isLoadingSlots &&
                   _timeSlots.isNotEmpty)
@@ -347,7 +419,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                     ],
                   ),
                 ),
-
               if (_selectedTime != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 24.0),
