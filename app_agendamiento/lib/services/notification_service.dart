@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class NotificationService {
-  static const String _scriptUrl = 'https://sendemail-demklgqjeq-uc.a.run.app';
+  static const String _scriptUrl =
+      'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/sendEmail';
 
   static Future<void> sendEmail({
     required String to,
