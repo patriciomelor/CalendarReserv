@@ -18,7 +18,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
   final _closingTimeController = TextEditingController();
 
   // Mapa para los días de la semana
-  Map<int, bool> _workDays = {
+  final Map<int, bool> _workDays = {
     1: false, // Lunes
     2: false, // Martes
     3: false, // Miércoles
@@ -168,18 +168,18 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                           });
                         },
                       );
-                    }).toList(),
+                    }),
                     const SizedBox(height: 30),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _saveSettings,
-                        child: const Text('Guardar Cambios'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.all(16),
                         ),
+                        child: const Text('Guardar Cambios'),
                       ),
                     ),
                   ],

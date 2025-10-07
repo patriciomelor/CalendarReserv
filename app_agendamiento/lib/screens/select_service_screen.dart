@@ -21,8 +21,9 @@ class SelectServiceScreen extends StatelessWidget {
             .where('salonId', isEqualTo: salonId)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final services = snapshot.data!.docs;
           if (services.isEmpty) {

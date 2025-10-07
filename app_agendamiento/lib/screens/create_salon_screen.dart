@@ -191,14 +191,14 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _createSalonAndAdmin,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Crear Cliente'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFB71C1C),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.all(16),
                   ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Crear Cliente'),
                 ),
               ),
             ],

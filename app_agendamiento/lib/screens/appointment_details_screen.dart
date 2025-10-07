@@ -54,8 +54,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Sí, cancelar'),
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Sí, cancelar'),
               ),
             ],
           ),

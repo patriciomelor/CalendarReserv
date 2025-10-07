@@ -1,29 +1,21 @@
 // Scripts for firebase and firebase messaging
-// MODIFICADO: Las URLs ahora son strings de JavaScript correctos.
 importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js");
 
-// Initialize the Firebase app in the service worker by passing in the
-// messagingSenderId.
-// NOTA: No necesitas cambiar nada aquí, Firebase lo configurará automáticamente.
+// Initialize the Firebase app in the service worker with your project's configuration
 firebase.initializeApp({
-    apiKey: "api-key",
-    authDomain: "project-id.firebaseapp.com",
-    databaseURL: "https://project-id.firebaseio.com",
-    projectId: "project-id",
-    storageBucket: "project-id.appspot.com",
-    messagingSenderId: "sender-id",
-    appId: "app-id",
-    measurementId: "G-measurement-id",
+  apiKey: "AIzaSyCWn41yfy4LNG1hoBHVJlPWpA29F6b_7ww",
+  appId: "1:994018420997:web:3cfb8ba107a564fa0baf6c",
+  messagingSenderId: "994018420997",
+  projectId: "appagendamiento-ddbd0",
+  authDomain: "appagendamiento-ddbd0.firebaseapp.com",
+  storageBucket: "appagendamiento-ddbd0.firebasestorage.app",
 });
-
 
 // Retrieve an instance of Firebase Messaging so that it can handle background
 // messages.
 const messaging = firebase.messaging();
 
-// Si quieres manejar notificaciones en segundo plano, puedes añadir lógica aquí.
-// Por ahora, lo dejamos así para que funcione por defecto.
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   // Customize notification here

@@ -23,7 +23,8 @@ class _AuthGateState extends State<AuthGate> {
     // Cuando el AuthGate se inicie, verificamos si el usuario está logueado
     // para inicializar las notificaciones y guardar su token.
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (user != null) {
+      if (user != null && !user.isAnonymous) {
+        // No guardamos token para invitados
         FcmService().initNotifications();
       }
     });

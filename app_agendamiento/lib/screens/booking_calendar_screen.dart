@@ -172,7 +172,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       } else {
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
-            .doc(currentUser!.uid)
+            .doc(currentUser.uid)
             .get();
         customerName = userDoc.data()?['nombre'] ?? 'Cliente';
         customerEmail = userDoc.data()?['email'] ?? '';
@@ -231,7 +231,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         to: customerEmail,
         subject: '¡Tu cita ha sido confirmada!',
         htmlBody:
-            '''<h1>¡Hola ${customerName}!</h1><p>Tu cita ha sido agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p>''',
+            '''<h1>¡Hola $customerName!</h1><p>Tu cita ha sido agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p>''',
       );
 
       if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga

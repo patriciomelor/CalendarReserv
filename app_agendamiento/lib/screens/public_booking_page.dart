@@ -95,8 +95,9 @@ class PublicBookingPage extends StatelessWidget {
                       .where('salonId', isEqualTo: salonId)
                       .snapshots(),
                   builder: (context, serviceSnapshot) {
-                    if (!serviceSnapshot.hasData)
+                    if (!serviceSnapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
 
                     return ListView.builder(
                       itemCount: serviceSnapshot.data!.docs.length,

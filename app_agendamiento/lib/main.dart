@@ -1,16 +1,21 @@
 // lib/main.dart
 
-import 'package:app_agendamiento/screens/auth_gate.dart';
-import 'package:app_agendamiento/screens/public_booking_page.dart'; // NUEVO IMPORT
+import 'package:app_agendamiento/firebase_options.dart';
+import 'package:app_agendamiento/screens/public_booking_page.dart';
+import 'package:app_agendamiento/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:app_agendamiento/screens/auth_gate.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await initializeDateFormatting('es_ES', null);
+  await NotificationService().init(); // Inicializa el servicio de notificaciones locales
+
   runApp(const MyApp());
 }
 
