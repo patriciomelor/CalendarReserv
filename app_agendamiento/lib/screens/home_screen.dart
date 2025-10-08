@@ -61,12 +61,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
         switch (role) {
           case 'superAdmin':
+          case 'super-admin': // Added for compatibility
             return SuperAdminDashboardScreen(userData: userData);
           case 'admin':
             return AdminDashboardScreen(userData: userData);
           case 'professional':
             return ProfessionalAgendaScreen(userData: userData);
           case 'customer':
+          case 'cliente': // Added for compatibility
           default:
             return CustomerHomeScreen(userData: userData);
         }
