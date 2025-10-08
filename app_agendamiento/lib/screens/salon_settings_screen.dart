@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SalonSettingsScreen extends StatefulWidget {
   final String salonId;
@@ -16,8 +17,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
   final _nameController = TextEditingController();
   final _openingTimeController = TextEditingController();
   final _closingTimeController = TextEditingController();
+  final _slotsPerTimeController = TextEditingController(); // Nuevo controlador
 
-  // Mapa para los días de la semana
   final Map<int, bool> _workDays = {
     1: false, // Lunes
     2: false, // Martes
@@ -56,6 +57,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
         _nameController.text = data['nombre'] ?? '';
         _openingTimeController.text = data['openingTime'] ?? '09:00';
         _closingTimeController.text = data['closingTime'] ?? '18:00';
+        _slotsPerTimeController.text = (data['slotsPerTime'] ?? 1)
+            .toString(); // Cargar dato
 
         final workDaysFromDb = List<int>.from(
           data['workDays'] ?? [1, 2, 3, 4, 5],
@@ -90,12 +93,18 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
             'openingTime': _openingTimeController.text.trim(),
             'closingTime': _closingTimeController.text.trim(),
             'workDays': selectedDays,
+            'slotsPerTime':
+                int.tryParse(_slotsPerTimeController.text.trim()) ??
+                1, // Guardar dato
           });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Configuración guardada'),
+          SnackBar(
+            content: Text(
+              'Configuración guardada',
+              style: GoogleFonts.poppins(),
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -107,9 +116,15 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Configuración del Salón'),
-        backgroundColor: Colors.orange,
+        title: Text(
+          'Configuración del Salón',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -120,47 +135,36 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre del Salón',
-                      ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Campo requerido' : null,
+                    _buildTextField(_nameController, 'Nombre del Salón'),
+                    _buildTextField(
+                      _openingTimeController,
+                      'Hora de Apertura (HH:mm)',
+                      isTime: true,
                     ),
+                    _buildTextField(
+                      _closingTimeController,
+                      'Hora de Cierre (HH:mm)',
+                      isTime: true,
+                    ),
+                    _buildTextField(
+                      _slotsPerTimeController,
+                      'Cupos por Horario',
+                      isNumeric: true,
+                    ), // Nuevo campo
                     const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _openingTimeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Hora de Apertura (formato HH:mm)',
-                      ),
-                      validator: (value) =>
-                          !RegExp(r'^\d{2}:\d{2}$').hasMatch(value!)
-                          ? 'Formato inválido'
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _closingTimeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Hora de Cierre (formato HH:mm)',
-                      ),
-                      validator: (value) =>
-                          !RegExp(r'^\d{2}:\d{2}$').hasMatch(value!)
-                          ? 'Formato inválido'
-                          : null,
-                    ),
-                    const SizedBox(height: 30),
-                    const Text(
+                    Text(
                       'Días de Atención:',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     ..._workDays.keys.map((day) {
                       return CheckboxListTile(
-                        title: Text(_dayNames[day]!),
+                        title: Text(
+                          _dayNames[day]!,
+                          style: GoogleFonts.poppins(),
+                        ),
                         value: _workDays[day],
                         onChanged: (bool? value) {
                           setState(() {
@@ -175,17 +179,60 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                       child: ElevatedButton(
                         onPressed: _saveSettings,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
+                          backgroundColor: Colors.blueAccent,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.all(16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: const Text('Guardar Cambios'),
+                        child: Text(
+                          'Guardar Cambios',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    bool isTime = false,
+    bool isNumeric = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Campo requerido';
+          }
+          if (isTime && !RegExp(r'^\d{2}:\d{2}$').hasMatch(value)) {
+            return 'Formato inválido (HH:mm)';
+          }
+          if (isNumeric && int.tryParse(value) == null) {
+            return 'Debe ser un número';
+          }
+          if (isNumeric && int.parse(value) <= 0) {
+            return 'Debe ser un número mayor a 0';
+          }
+          return null;
+        },
+      ),
     );
   }
 }

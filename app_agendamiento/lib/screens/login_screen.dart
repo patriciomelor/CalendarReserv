@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback showRegisterPage;
@@ -15,13 +16,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String _errorMessage = '';
-  bool _isLoading = false; // NUEVO: Variable para controlar el estado de carga
+  bool _isLoading = false;
 
   Future<void> signIn() async {
-    // NUEVO: Si ya está cargando, no hacemos nada.
     if (_isLoading) return;
 
-    // NUEVO: Ponemos la UI en estado de carga
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -32,8 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // La navegación es manejada por AuthGate, no necesitamos hacer nada aquí.
-      // El widget será destruido, así que no es necesario cambiar _isLoading a false.
     } on FirebaseAuthException catch (e) {
       setState(() {
         if (e.code == 'user-not-found' ||
@@ -43,10 +40,9 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           _errorMessage = 'Ocurrió un error. Inténtalo de nuevo.';
         }
-        _isLoading = false; // NUEVO: Dejamos de cargar si hay un error
+        _isLoading = false;
       });
     }
-    // MODIFICADO: Ya no es necesario un `finally` porque el estado se maneja directamente.
   }
 
   @override
@@ -59,94 +55,76 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(32.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   '¡Hola de Nuevo!',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Bienvenido de vuelta, te hemos extrañado.',
-                  style: TextStyle(fontSize: 18),
+                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 50),
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Correo Electrónico',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
+                _buildTextField(_emailController, 'Correo Electrónico', isEmail: true),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
+                _buildTextField(_passwordController, 'Contraseña', isPassword: true),
                 const SizedBox(height: 20),
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       _errorMessage,
-                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                      style: GoogleFonts.poppins(color: Colors.red, fontSize: 14),
                     ),
                   ),
-
-                // MODIFICADO: El botón ahora cambia para mostrar un spinner
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading
-                        ? null
-                        : signIn, // Desactivamos el botón mientras carga
+                    onPressed: _isLoading ? null : signIn,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      backgroundColor: Colors.deepPurple,
+                      backgroundColor: Colors.blueAccent,
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator(
                             color: Colors.white,
-                          ) // Muestra el spinner
-                        : const Text(
+                          )
+                        : Text(
                             'Iniciar Sesión',
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ), // Muestra el texto
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('¿No eres miembro?'),
+                    Text('¿No eres miembro?', style: GoogleFonts.poppins()),
                     TextButton(
                       onPressed: widget.showRegisterPage,
-                      child: const Text(
+                      child: Text(
                         'Regístrate ahora',
-                        style: TextStyle(
-                          color: Colors.blue,
+                        style: GoogleFonts.poppins(
+                          color: Colors.blueAccent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -158,6 +136,24 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, {bool isEmail = false, bool isPassword = false}) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.poppins(),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        prefixIcon: Icon(isEmail ? Icons.email_outlined : isPassword? Icons.lock_outline : Icons.person_outline),
+      ),
+      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
     );
   }
 }

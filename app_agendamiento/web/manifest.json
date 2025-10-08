@@ -1,11 +1,11 @@
 {
-    "name": "app_agendamiento",
-    "short_name": "app_agendamiento",
+    "name": "Agend.app",
+    "short_name": "Agend.app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Agend.app - Tu app de agendamiento.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

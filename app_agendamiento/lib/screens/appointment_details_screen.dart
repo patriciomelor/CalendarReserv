@@ -1,7 +1,9 @@
 // lib/screens/appointment_details_screen.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class AppointmentDetailsScreen extends StatefulWidget {
@@ -43,19 +45,20 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
         await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Confirmar Cancelación'),
-            content: const Text(
+            title: Text('Confirmar Cancelación', style: GoogleFonts.poppins()),
+            content: Text(
               '¿Estás seguro de que deseas cancelar esta cita?',
+              style: GoogleFonts.poppins(),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('No'),
+                child: Text('No', style: GoogleFonts.poppins()),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Sí, cancelar'),
+                child: Text('Sí, cancelar', style: GoogleFonts.poppins()),
               ),
             ],
           ),
@@ -71,8 +74,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cita cancelada.'),
+          SnackBar(
+            content: Text('Cita cancelada.', style: GoogleFonts.poppins()),
             backgroundColor: Colors.orange,
           ),
         );
@@ -86,12 +89,15 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     final startTime = (data['startTime'] as Timestamp).toDate();
     final isPast = startTime.isBefore(DateTime.now());
     final status = data['status'];
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Detalles de la Cita'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
+        title: Text('Detalles de la Cita', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
       body: FutureBuilder<Map<String, String>>(
         future: _getAppointmentDetails(),
@@ -100,8 +106,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(
-              child: Text('No se pudieron cargar los detalles.'),
+            return Center(
+              child: Text('No se pudieron cargar los detalles.', style: GoogleFonts.poppins()),
             );
           }
 
@@ -141,19 +147,40 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                       : Colors.red,
                 ),
                 const Spacer(),
-                if (!isPast && status == 'confirmada')
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.cancel_outlined),
-                      label: const Text('Cancelar Cita'),
-                      onPressed: _cancelAppointment,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(16),
-                      ),
-                    ),
+                if (!isPast && status == 'confirmada' && currentUser != null)
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get(),
+                    builder: (context, userSnapshot) {
+                      if (!userSnapshot.hasData) return const SizedBox.shrink();
+                      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                      final userRole = userData['rol'];
+
+                      bool canCancel = false;
+                      if (userRole == 'professional' && data['professionalId'] == currentUser.uid) {
+                        canCancel = true;
+                      }
+                      if (data['customerId'] == currentUser.uid) {
+                        canCancel = true;
+                      }
+
+                      if (canCancel) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.cancel_outlined),
+                            label: Text('Cancelar Cita', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                            onPressed: _cancelAppointment,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
                   ),
               ],
             ),
@@ -170,17 +197,17 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     Color? statusColor,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: Row(
         children: [
           Icon(icon, color: Colors.grey[600]),
           const SizedBox(width: 16),
-          Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('$label:', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: statusColor, fontSize: 16),
+              style: GoogleFonts.poppins(color: statusColor, fontSize: 16),
             ),
           ),
         ],

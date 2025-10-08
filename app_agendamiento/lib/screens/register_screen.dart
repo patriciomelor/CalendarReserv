@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback showLoginPage;
@@ -10,7 +11,7 @@ class RegisterScreen extends StatefulWidget {
   const RegisterScreen({
     super.key,
     required this.showLoginPage,
-    this.onGuestContinue, // Y esta
+    this.onGuestContinue,
   });
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -22,13 +23,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   String _errorMessage = '';
-  bool _isLoading = false; // NUEVO: Variable para controlar el estado de carga
+  bool _isLoading = false;
 
   Future<void> signUp() async {
-    // NUEVO: Si ya está cargando, no hacemos nada.
     if (_isLoading) return;
 
-    // Validaciones
     if (_passwordController.text.trim() !=
         _confirmPasswordController.text.trim()) {
       setState(() => _errorMessage = 'Las contraseñas no coinciden.');
@@ -39,7 +38,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // NUEVO: Ponemos la UI en estado de carga
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -60,7 +58,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'email': _emailController.text.trim(),
             'rol': 'cliente',
           });
-      // La navegación la maneja AuthGate, no necesitamos hacer nada más.
     } on FirebaseAuthException catch (e) {
       setState(() {
         if (e.code == 'weak-password') {
@@ -70,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         } else {
           _errorMessage = 'Ocurrió un error. Verifica tus datos.';
         }
-        _isLoading = false; // NUEVO: Dejamos de cargar si hay un error
+        _isLoading = false;
       });
     }
   }
@@ -87,119 +84,80 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(32.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'Crea tu Cuenta',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   '¡Completa tus datos para registrarte!',
-                  style: TextStyle(fontSize: 18),
+                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 50),
-                TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre Completo',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
+                _buildTextField(_nameController, 'Nombre Completo'),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Correo Electrónico',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
+                _buildTextField(_emailController, 'Correo Electrónico', isEmail: true),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
+                _buildTextField(_passwordController, 'Contraseña', isPassword: true),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: _confirmPasswordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Confirmar Contraseña',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
+                _buildTextField(_confirmPasswordController, 'Confirmar Contraseña', isPassword: true),
                 const SizedBox(height: 20),
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       _errorMessage,
-                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                      style: GoogleFonts.poppins(color: Colors.red, fontSize: 14),
                     ),
                   ),
-
-                // MODIFICADO: El botón ahora cambia para mostrar un spinner
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading
-                        ? null
-                        : signUp, // Desactivamos el botón mientras carga
+                    onPressed: _isLoading ? null : signUp,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      backgroundColor: Colors.deepPurple,
+                      backgroundColor: Colors.blueAccent,
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator(
                             color: Colors.white,
-                          ) // Muestra el spinner
-                        : const Text(
+                          )
+                        : Text(
                             'Registrarse',
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ), // Muestra el texto
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('¿Ya eres miembro?'),
+                    Text('¿Ya eres miembro?', style: GoogleFonts.poppins()),
                     TextButton(
                       onPressed: widget.showLoginPage,
-                      child: const Text(
+                      child: Text(
                         'Inicia sesión',
-                        style: TextStyle(
-                          color: Colors.blue,
+                        style: GoogleFonts.poppins(
+                          color: Colors.blueAccent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -211,6 +169,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, {bool isEmail = false, bool isPassword = false}) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.poppins(),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        prefixIcon: Icon(isEmail ? Icons.email_outlined : isPassword? Icons.lock_outline : Icons.person_outline),
+      ),
+      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
     );
   }
 }

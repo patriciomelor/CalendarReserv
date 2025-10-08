@@ -67,9 +67,9 @@ class NotificationService {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'to': to, 'subject': subject, 'htmlBody': htmlBody}),
       );
-      print('Respuesta del servicio de correo: ${response.body}');
+      // print('Respuesta del servicio de correo: ${response.body}');
     } catch (e) {
-      print('Error al enviar correo: $e');
+      // print('Error al enviar correo: $e');
     }
   }
 }

@@ -1,6 +1,6 @@
 // lib/screens/create_salon_screen.dart
 
-import 'package:app_agendamiento/services/notification_service.dart';
+import 'package:agend_app/services/notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -95,13 +95,17 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
         Navigator.of(context).pop();
       }
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de autenticación: ${e.message}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error de autenticación: ${e.message}')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ocurrió un error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ocurrió un error: $e')));
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

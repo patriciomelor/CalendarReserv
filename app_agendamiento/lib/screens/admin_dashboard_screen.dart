@@ -1,12 +1,13 @@
 // lib/screens/admin_dashboard_screen.dart
 
-import 'package:app_agendamiento/screens/salon_agenda_screen.dart';
+import 'package:agend_app/screens/salon_agenda_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:app_agendamiento/screens/professionals_screen.dart';
-import 'package:app_agendamiento/screens/services_screen.dart';
-import 'package:app_agendamiento/screens/salon_settings_screen.dart';
+import 'package:agend_app/screens/professionals_screen.dart';
+import 'package:agend_app/screens/services_screen.dart';
+import 'package:agend_app/screens/salon_settings_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -24,19 +25,7 @@ class AdminDashboardScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Panel de Administración'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              FirebaseAuth.instance.signOut();
-            },
-          ),
-        ],
-      ),
+      backgroundColor: Colors.grey[100],
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
             .collection('salones')
@@ -61,94 +50,178 @@ class AdminDashboardScreen extends StatelessWidget {
 
           final salonData = salonSnapshot.data!.data() as Map<String, dynamic>;
 
-          // MODIFICADO: Usamos un ListView en lugar de un Column para permitir el scroll
-          return ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              Text(
-                salonData['nombre'] ?? 'Nombre del Salón',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                title: Text(
+                  salonData['nombre'] ?? 'Panel de Administración',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+                floating: true,
+                snap: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.black,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: () {
+                      FirebaseAuth.instance.signOut();
+                    },
+                  ),
+                ],
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bienvenido, ${userData['nombre']}!',
+                        style: GoogleFonts.poppins(fontSize: 18),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildManagementCard(
+                        context,
+                        icon: Icons.calendar_month,
+                        title: 'Agenda del Día',
+                        color: Colors.indigo,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  SalonAgendaScreen(salonId: salonId),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Opciones de Gestión',
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Bienvenido, ${userData['nombre']}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const Divider(height: 40, thickness: 1),
-
-              ListTile(
-                leading: const Icon(Icons.calendar_month, color: Colors.indigo),
-                title: const Text('Agenda del Día'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildManagementListTile(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => SalonAgendaScreen(salonId: salonId),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
-
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  'Opciones de Gestión:',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-              ),
-
-              ListTile(
-                leading: const Icon(Icons.group),
-                title: const Text('Gestionar Profesionales'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
+                    icon: Icons.group,
+                    title: 'Gestionar Profesionales',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ProfessionalsScreen(salonId: salonId),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildManagementListTile(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ProfessionalsScreen(salonId: salonId),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cut),
-                title: const Text('Gestionar Servicios'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
+                    icon: Icons.cut,
+                    title: 'Gestionar Servicios',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ServicesScreen(salonId: salonId),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildManagementListTile(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => ServicesScreen(salonId: salonId),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Configuración del Salón'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          SalonSettingsScreen(salonId: salonId),
-                    ),
-                  );
-                },
+                    icon: Icons.settings,
+                    title: 'Configuración del Salón',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SalonSettingsScreen(salonId: salonId),
+                        ),
+                      );
+                    },
+                  ),
+                ]),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildManagementCard(BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: color.withOpacity(0.1),
+                child: Icon(icon, color: color, size: 30),
+              ),
+              const SizedBox(width: 20),
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              const Icon(Icons.arrow_forward_ios, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManagementListTile(BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        leading: Icon(icon, color: Colors.grey[700]),
+        title: Text(
+          title,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
       ),
     );
   }

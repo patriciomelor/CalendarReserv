@@ -1,7 +1,7 @@
 // lib/screens/login_or_register_screen.dart
 
-import 'package:app_agendamiento/screens/select_salon_screen.dart';
-import 'package:app_agendamiento/screens/register_screen.dart';
+import 'package:agend_app/screens/select_salon_screen.dart';
+import 'package:agend_app/screens/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // <-- ESTA LÍNEA FALTABA
 

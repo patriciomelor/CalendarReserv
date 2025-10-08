@@ -1,6 +1,6 @@
 // lib/screens/select_service_screen.dart
 
-import 'package:app_agendamiento/screens/select_professional_screen.dart';
+import 'package:agend_app/screens/select_professional_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 

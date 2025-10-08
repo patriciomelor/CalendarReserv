@@ -3,7 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:app_agendamiento/screens/create_salon_screen.dart';
+import 'package:agend_app/screens/create_salon_screen.dart';
 
 class SuperAdminDashboardScreen extends StatelessWidget {
   final Map<String, dynamic> userData;

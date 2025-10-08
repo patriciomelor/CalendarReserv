@@ -1,17 +1,24 @@
 // lib/screens/booking_calendar_screen.dart
 
-import 'package:app_agendamiento/screens/booking_success_screen.dart';
+import 'package:agend_app/screens/booking_success_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:app_agendamiento/services/notification_service.dart';
+import 'package:agend_app/services/notification_service.dart';
 
 class TimeSlot {
   final TimeOfDay time;
-  bool isBooked;
-  TimeSlot({required this.time, this.isBooked = false});
+  final int bookings;
+  final bool isCurrentUserBooked;
+
+  TimeSlot({
+    required this.time,
+    this.bookings = 0,
+    this.isCurrentUserBooked = false,
+  });
 }
 
 class BookingCalendarScreen extends StatefulWidget {
@@ -36,6 +43,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   TimeOfDay? _selectedTime;
   List<TimeSlot> _timeSlots = [];
   bool _isLoadingSlots = false;
+  int _slotsPerTime = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+    _generateTimeSlots(_selectedDay!);
+  }
 
   Future<void> _generateTimeSlots(DateTime day) async {
     setState(() {
@@ -52,6 +67,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       if (!salonDoc.exists) return;
 
       final salonData = salonDoc.data()!;
+      _slotsPerTime = salonData['slotsPerTime'] ?? 1;
       final openingTimeParts = (salonData['openingTime'] as String).split(':');
       final closingTimeParts = (salonData['closingTime'] as String).split(':');
       final openingTime = TimeOfDay(
@@ -88,13 +104,15 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           )
           .get();
 
-      final bookedTimes = appointmentsSnapshot.docs.map((doc) {
+      final bookedSlots = appointmentsSnapshot.docs.map((doc) {
         final data = doc.data();
-        return MapEntry(
-          (data['startTime'] as Timestamp).toDate(),
-          (data['endTime'] as Timestamp).toDate(),
-        );
+        return {
+          'startTime': (data['startTime'] as Timestamp).toDate(),
+          'customerId': data['customerId'],
+        };
       }).toList();
+
+      final currentUser = FirebaseAuth.instance.currentUser;
 
       List<TimeSlot> potentialSlots = [];
       DateTime currentTime = startOfDay.add(
@@ -106,7 +124,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
 
       while (currentTime.isBefore(endTimeLimit)) {
         final slotTime = TimeOfDay.fromDateTime(currentTime);
-        bool isBooked = false;
         final slotStart = currentTime;
         final slotEnd = slotStart.add(Duration(minutes: serviceDuration));
 
@@ -114,13 +131,22 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           break;
         }
 
-        for (var booked in bookedTimes) {
-          if (slotStart.isBefore(booked.value) && slotEnd.isAfter(booked.key)) {
-            isBooked = true;
-            break;
-          }
-        }
-        potentialSlots.add(TimeSlot(time: slotTime, isBooked: isBooked));
+        final bookingsForSlot = bookedSlots
+            .where((booked) =>
+                booked['startTime']!.hour == slotTime.hour &&
+                booked['startTime']!.minute == slotTime.minute)
+            .toList();
+
+        final isCurrentUserBooked = currentUser != null &&
+            bookingsForSlot.any(
+                (booking) => booking['customerId'] == currentUser.uid);
+
+        potentialSlots.add(TimeSlot(
+          time: slotTime,
+          bookings: bookingsForSlot.length,
+          isCurrentUserBooked: isCurrentUserBooked,
+        ));
+
         currentTime = currentTime.add(const Duration(minutes: 15));
       }
 
@@ -128,7 +154,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         _timeSlots = potentialSlots;
       });
     } catch (e) {
-      print('Error al generar horarios: $e');
+      // print('Error al generar horarios: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoadingSlots = false);
@@ -136,7 +162,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     }
   }
 
-  // **** FUNCIÓN _bookAppointment COMPLETAMENTE REESCRITA SIN TRANSACCIÓN ****
   Future<void> _bookAppointment() async {
     if (_selectedDay == null || _selectedTime == null) return;
 
@@ -157,15 +182,16 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       if (isGuestBooking) {
         final guestDetails = await _showGuestDetailsDialog();
         if (guestDetails == null) {
-          Navigator.of(context).pop();
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
           return;
         }
         customerName = guestDetails['name']!;
         customerEmail = guestDetails['email']!;
 
         if (currentUser == null) {
-          final userCredential = await FirebaseAuth.instance
-              .signInAnonymously();
+          final userCredential = await FirebaseAuth.instance.signInAnonymously();
           currentUser = userCredential.user;
         }
         customerId = currentUser!.uid;
@@ -192,36 +218,39 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       );
       final endTime = startTime.add(Duration(minutes: serviceDuration));
 
-      // 1. Re-verificación de disponibilidad justo antes de escribir
-      final query = FirebaseFirestore.instance
-          .collection('appointments')
-          .where('professionalId', isEqualTo: widget.professional.id)
-          .where('startTime', isLessThan: Timestamp.fromDate(endTime))
-          .where('endTime', isGreaterThan: Timestamp.fromDate(startTime))
-          .limit(1);
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final query = FirebaseFirestore.instance
+            .collection('appointments')
+            .where('professionalId', isEqualTo: widget.professional.id)
+            .where('startTime', isEqualTo: Timestamp.fromDate(startTime));
 
-      final existingAppointments = await query.get();
-      if (existingAppointments.docs.isNotEmpty) {
-        throw Exception(
-          'Este horario ya no está disponible. Por favor, elige otro.',
-        );
-      }
+        final existingAppointments = await query.get();
 
-      // 2. Si está libre, crear la cita
-      await FirebaseFirestore.instance.collection('appointments').add({
-        'salonId': widget.salonId,
-        'serviceId': widget.service.id,
-        'professionalId': widget.professional.id,
-        'customerId': customerId,
-        'customerName': customerName,
-        'customerEmail': customerEmail,
-        'startTime': Timestamp.fromDate(startTime),
-        'endTime': Timestamp.fromDate(endTime),
-        'status': 'confirmada',
-        'isGuest': isGuestBooking,
+        if (existingAppointments.docs.length >= _slotsPerTime) {
+          throw Exception(
+            'Este horario ya no está disponible. Por favor, elige otro.',
+          );
+        }
+
+        if (existingAppointments.docs
+            .any((doc) => doc.data()['customerId'] == customerId)) {
+          throw Exception('Ya tienes una cita en este horario.');
+        }
+
+        transaction.set(FirebaseFirestore.instance.collection('appointments').doc(), {
+          'salonId': widget.salonId,
+          'serviceId': widget.service.id,
+          'professionalId': widget.professional.id,
+          'customerId': customerId,
+          'customerName': customerName,
+          'customerEmail': customerEmail,
+          'startTime': Timestamp.fromDate(startTime),
+          'endTime': Timestamp.fromDate(endTime),
+          'status': 'confirmada',
+          'isGuest': isGuestBooking,
+        });
       });
 
-      // 3. Enviar notificación por correo
       final formattedDate = DateFormat(
         'EEEE d \'de\' MMMM, yyyy',
         'es_ES',
@@ -246,8 +275,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('¡Cita agendada con éxito!'),
+            SnackBar(
+              content: Text('¡Cita agendada con éxito!', style: GoogleFonts.poppins()),
               backgroundColor: Colors.green,
             ),
           );
@@ -274,7 +303,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Datos para la Reserva'),
+          title: Text('Datos para la Reserva', style: GoogleFonts.poppins()),
           content: Form(
             key: formKey,
             child: Column(
@@ -282,16 +311,18 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Tu Nombre Completo',
+                    labelStyle: GoogleFonts.poppins(),
                   ),
                   validator: (value) =>
                       value!.isEmpty ? 'Campo requerido' : null,
                 ),
                 TextFormField(
                   controller: emailController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Tu Correo Electrónico',
+                    labelStyle: GoogleFonts.poppins(),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) => value!.isEmpty || !value.contains('@')
@@ -304,7 +335,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
+              child: Text('Cancelar', style: GoogleFonts.poppins()),
             ),
             ElevatedButton(
               onPressed: () {
@@ -315,7 +346,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                   });
                 }
               },
-              child: const Text('Confirmar'),
+              child: Text('Confirmar', style: GoogleFonts.poppins()),
             ),
           ],
         );
@@ -323,18 +354,17 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     );
   }
 
-  DateTime startOfDay(DateTime date) =>
-      DateTime(date.year, date.month, date.day);
-
   @override
   Widget build(BuildContext context) {
     final serviceData = widget.service.data() as Map<String, dynamic>;
     final professionalData = widget.professional.data() as Map<String, dynamic>;
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('3. Selecciona Fecha y Hora'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
+        title: Text('3. Selecciona Fecha y Hora', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -344,13 +374,15 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
             children: [
               Text(
                 'Resumen de tu Cita:',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  title: Text('Servicio: ${serviceData['nombre']}'),
-                  subtitle: Text('Profesional: ${professionalData['nombre']}'),
+                  title: Text('Servicio: ${serviceData['nombre']}', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                  subtitle: Text('Profesional: ${professionalData['nombre']}', style: GoogleFonts.poppins()),
                 ),
               ),
               const SizedBox(height: 20),
@@ -368,37 +400,54 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                   });
                   _generateTimeSlots(selectedDay);
                 },
+                calendarStyle: CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: Colors.blueAccent.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: const BoxDecoration(
+                    color: Colors.blueAccent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                headerStyle: HeaderStyle(
+                  titleCentered: true,
+                  titleTextStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  formatButtonVisible: false,
+                ),
               ),
               const Divider(height: 30),
               if (_selectedDay != null)
                 _isLoadingSlots
                     ? const Center(child: CircularProgressIndicator())
                     : _timeSlots.isEmpty
-                    ? const Center(
-                        child: Text('No hay horas disponibles para este día.'),
+                    ? Center(
+                        child: Text('No hay horas disponibles para este día.', style: GoogleFonts.poppins()),
                       )
                     : Wrap(
                         spacing: 8.0,
                         runSpacing: 8.0,
                         children: _timeSlots.map((slot) {
                           final isSelected = _selectedTime == slot.time;
-                          final isBooked = slot.isBooked;
+                          final isFullyBooked = slot.bookings >= _slotsPerTime;
+                          final canBook = !isFullyBooked && !slot.isCurrentUserBooked;
+
                           return ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isSelected
                                   ? Colors.deepPurple
-                                  : isBooked
-                                  ? Colors.grey[400]
-                                  : Colors.green,
+                                  : canBook
+                                  ? Colors.green
+                                  : Colors.grey[400],
                               foregroundColor: Colors.white,
                             ),
-                            onPressed: isBooked
-                                ? null
-                                : () {
+                            onPressed: canBook
+                                ? () {
                                     setState(() {
                                       _selectedTime = slot.time;
                                     });
-                                  },
+                                  }
+                                : null,
                             child: Text(slot.time.format(context)),
                           );
                         }).toList(),
@@ -415,7 +464,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                       const SizedBox(width: 16),
                       _buildLegendItem(Colors.deepPurple, 'Seleccionado'),
                       const SizedBox(width: 16),
-                      _buildLegendItem(Colors.grey[400]!, 'Reservado'),
+                      _buildLegendItem(Colors.grey[400]!, 'No disponible'),
                     ],
                   ),
                 ),
@@ -429,13 +478,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                         Icons.check_circle_outline,
                         color: Colors.white,
                       ),
-                      label: const Text(
+                      label: Text(
                         'Confirmar Cita',
-                        style: TextStyle(color: Colors.white),
+                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         padding: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: _bookAppointment,
                     ),
@@ -453,7 +503,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       children: [
         Container(width: 16, height: 16, color: color),
         const SizedBox(width: 8),
-        Text(text),
+        Text(text, style: GoogleFonts.poppins()),
       ],
     );
   }

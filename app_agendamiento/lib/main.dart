@@ -1,11 +1,11 @@
 // lib/main.dart
 
-import 'package:app_agendamiento/firebase_options.dart';
-import 'package:app_agendamiento/screens/public_booking_page.dart';
-import 'package:app_agendamiento/services/notification_service.dart';
+import 'package:agend_app/firebase_options.dart';
+import 'package:agend_app/screens/public_booking_page.dart';
+import 'package:agend_app/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:app_agendamiento/screens/auth_gate.dart';
+import 'package:agend_app/screens/auth_gate.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {

@@ -1,8 +1,8 @@
 // lib/screens/auth_gate.dart
 
-import 'package:app_agendamiento/screens/home_screen.dart';
-import 'package:app_agendamiento/screens/login_or_register_screen.dart';
-import 'package:app_agendamiento/services/fcm_service.dart'; // NUEVO IMPORT
+import 'package:agend_app/screens/home_screen.dart';
+import 'package:agend_app/screens/login_or_register_screen.dart';
+import 'package:agend_app/services/fcm_service.dart'; // NUEVO IMPORT
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 

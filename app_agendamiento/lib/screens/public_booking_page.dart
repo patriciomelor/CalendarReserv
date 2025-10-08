@@ -1,6 +1,6 @@
 // lib/screens/public_booking_page.dart
 
-import 'package:app_agendamiento/screens/booking_calendar_screen.dart'; // Reutilizamos el calendario
+import 'package:agend_app/screens/booking_calendar_screen.dart'; // Reutilizamos el calendario
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
