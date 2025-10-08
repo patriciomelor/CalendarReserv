@@ -57,24 +57,20 @@ class FcmService {
     if (token == null) return;
 
     String? userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId != null) {
-      try {
-        await _firestore.collection("users").doc(userId).update({
+    try {
+      await _firestore.collection("users").doc(userId).update({
+        "fcmToken": token,
+      });
+      // print("FCM token saved to database for user $userId");
+    } catch (e) {
+      // print("Error saving FCM token: $e");
+      // Si el documento no existe, créalo.
+      if (e is FirebaseException && e.code == 'not-found') {
+        await _firestore.collection("users").doc(userId).set({
           "fcmToken": token,
-        });
-        // print("FCM token saved to database for user $userId");
-      } catch (e) {
-        // print("Error saving FCM token: $e");
-        // Si el documento no existe, créalo.
-        if (e is FirebaseException && e.code == 'not-found') {
-          await _firestore.collection("users").doc(userId).set({
-            "fcmToken": token,
-          }, SetOptions(merge: true));
-          // print("FCM token document created and saved for user $userId");
-        }
+        }, SetOptions(merge: true));
+        // print("FCM token document created and saved for user $userId");
       }
-    } else {
-      // print("User not logged in, FCM token not saved.");
     }
   }
 }

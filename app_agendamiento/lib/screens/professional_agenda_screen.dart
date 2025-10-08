@@ -36,16 +36,27 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
     );
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
+    if (professionalId == null || salonId == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Error de Configuración')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Tu cuenta de profesional no está configurada correctamente. '
+              'Falta el ID de profesional o el ID del salón. '
+              'Por favor, contacta al administrador.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(color: Colors.red[700], fontSize: 16),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: professionalId == null
-          ? Center(
-              child: Text(
-                'Error: tu cuenta no está vinculada a un perfil de profesional.',
-                style: GoogleFonts.poppins(color: Colors.red[700]),
-              ),
-            )
-          : CustomScrollView(
+      body: CustomScrollView(
               slivers: [
                 SliverAppBar(
                   pinned: true,
