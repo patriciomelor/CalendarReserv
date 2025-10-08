@@ -22,42 +22,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (currentUser == null) {
       // This should not happen if AuthGate is working correctly, but as a fallback.
-      return const Scaffold(
-        body: Center(
-          child: Text('No user logged in.'),
-        ),
-      );
+      return const Scaffold(body: Center(child: Text('No user logged in.')));
     }
 
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get(),
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError) {
           return Scaffold(
-            body: Center(
-              child: Text('Error: ${snapshot.error}'),
-            ),
+            body: Center(child: Text('Error: ${snapshot.error}')),
           );
         }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return const Scaffold(
-            body: Center(
-              child: Text('User data not found.'),
-            ),
+            body: Center(child: Text('User data not found.')),
           );
         }
 
         final userData = snapshot.data!.data() as Map<String, dynamic>;
-        final role = userData['role'] as String?;
+        final role = userData['rol'] as String?;
 
         switch (role) {
           case 'superAdmin':

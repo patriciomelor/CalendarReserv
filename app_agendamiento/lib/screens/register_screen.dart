@@ -50,20 +50,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Crear usuario
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
       // Guardar datos adicionales en Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
-        'name': _nameController.text.trim(), // Corregido a 'name' para consistencia
-        'email': _emailController.text.trim(),
-        'role': 'customer', // Rol por defecto
-        'createdAt': FieldValue.serverTimestamp(), // Fecha de creación
-      });
+            'name': _nameController.text
+                .trim(), // Corregido a 'name' para consistencia
+            'email': _emailController.text.trim(),
+            'rol': 'customer', // Rol por defecto
+            'createdAt': FieldValue.serverTimestamp(), // Fecha de creación
+          });
 
       // La navegación la maneja AuthGate
     } on FirebaseAuthException catch (e) {
@@ -227,9 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       onPressed: _isLoading ? null : _signUp,
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
       ),
