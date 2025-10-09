@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   CustomTextField(
                     controller: _passwordController,
                     label: 'Contraseña',
-                    prefixIcon: Icons.lock_outline,
+                    prefixIconData: Icons.lock_outline,
                     obscureText: true,
                   ),
                   const SizedBox(height: 20),

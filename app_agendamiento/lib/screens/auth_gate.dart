@@ -18,20 +18,22 @@ class AuthGate extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          // Si hay un usuario (registrado o anónimo), inicializa las notificaciones
           if (snapshot.hasData) {
-            if (snapshot.data!.isAnonymous) {
-              return const HomeScreen();
-            }
             return FutureBuilder(
+              // Llama a initNotifications para cualquier tipo de usuario
               future: FcmService().initNotifications(),
               builder: (context, snapshot) {
+                // Muestra un indicador de carga mientras se inicializa FCM
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                // Una vez completado, muestra la pantalla de inicio
                 return const HomeScreen();
               },
             );
           } else {
+            // Si no hay usuario, muestra la pantalla de login/registro
             return const LoginOrRegisterScreen();
           }
         },

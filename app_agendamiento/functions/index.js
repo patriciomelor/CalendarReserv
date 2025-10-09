@@ -46,42 +46,67 @@ exports.sendEmail = functions.runWith({ secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD
 });
 
 
-// En functions/index.js
-
-// Esta función se activa cada vez que se crea un nuevo documento en 'appointments'
-exports.sendNewAppointmentNotification = functions.firestore
+exports.sendConfirmationNotification = functions.firestore
   .document('appointments/{appointmentId}')
-  .onCreate(async (snap, context) => {
-    const appointment = snap.data();
+  .onUpdate(async (change, context) => {
+    const newValue = change.after.data();
+    const previousValue = change.before.data();
 
-    // Agrega logs para depuración
-    console.log('Datos de la cita:', appointment);
+    // Si el estado no cambió a 'confirmada', no hagas nada.
+    if (newValue.status !== 'confirmada' || previousValue.status === 'confirmada') {
+      console.log("El estado no cambió a 'confirmada', no se envía notificación.");
+      return null;
+    }
 
-    // Asegúrate de que el token existe
-    const token = appointment?.professionalToken;
-    console.log('Token de notificación del profesional:', token);
+    const customerId = newValue.customerId;
+    if (!customerId) {
+      console.error("No se encontró customerId en la cita.");
+      return null;
+    }
 
-    // Construye el payload
+    // Obtener el token del usuario desde la colección 'users'
+    let userDoc;
+    try {
+      userDoc = await admin.firestore().collection('users').doc(customerId).get();
+    } catch (error) {
+      console.error("Error al obtener el documento del usuario:", error);
+      return null;
+    }
+
+    if (!userDoc.exists) {
+      console.error(`No se encontró el usuario con ID: ${customerId}`);
+      return null;
+    }
+
+    const fcmToken = userDoc.data().fcmToken;
+    if (!fcmToken) {
+      console.error(`El usuario ${customerId} no tiene un fcmToken.`);
+      return null;
+    }
+
+    // Formatear la fecha y hora de la cita
+    const startTime = newValue.startTime.toDate();
+    const formattedDate = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeStyle: 'short' }).format(startTime);
+
+    // Construir el payload de la notificación
     const payload = {
       notification: {
-        title: 'Nueva cita registrada',
-        body: `Tienes una nueva cita para el ${appointment?.date || 'fecha desconocida'}`,
+        title: '¡Tu cita está confirmada!',
+        body: `Tu cita para el ${formattedDate} ha sido confirmada.`,
       },
-      token: token,
+      token: fcmToken,
     };
-    console.log('Payload a enviar:', payload);
 
-    if (!token) {
-      console.error('No se encontró token de notificación para el profesional');
-      return;
-    }
+    console.log("Enviando notificación push al cliente:", payload);
 
     try {
       await admin.messaging().send(payload);
-      console.log('Notificación enviada correctamente');
+      console.log('Notificación enviada correctamente al cliente.');
     } catch (error) {
-      console.error('Error al enviar la notificación push:', error);
+      console.error('Error al enviar la notificación push al cliente:', error);
     }
+
+    return null;
   });
 
 exports.confirmAppointment = functions.https.onRequest(async (req, res) => {

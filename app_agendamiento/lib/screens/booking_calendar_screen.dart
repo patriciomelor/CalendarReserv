@@ -199,7 +199,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         customerEmail = guestDetails['email']!;
 
         if (currentUser == null) {
-          final userCredential = await FirebaseAuth.instance.signInAnonymously();
+          final userCredential = await FirebaseAuth.instance
+              .signInAnonymously();
           currentUser = userCredential.user;
         }
         customerId = currentUser!.uid;
@@ -226,7 +227,9 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       );
       final endTime = startTime.add(Duration(minutes: serviceDuration));
 
-      final appointmentRef = FirebaseFirestore.instance.collection('appointments').doc();
+      final appointmentRef = FirebaseFirestore.instance
+          .collection('appointments')
+          .doc();
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final query = FirebaseFirestore.instance
@@ -248,36 +251,146 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           throw Exception('Ya tienes una cita en este horario.');
         }
 
-        transaction
-            .set(appointmentRef, {
-              'salonId': widget.salonId,
-              'serviceId': widget.service.id,
-              'professionalId': widget.professional.id,
-              'customerId': customerId,
-              'customerName': customerName,
-              'customerEmail': customerEmail,
-              'startTime': Timestamp.fromDate(startTime),
-              'endTime': Timestamp.fromDate(endTime),
-              'status': 'pendiente',
-              'createdAt': FieldValue.serverTimestamp(),
-              'isGuest': isGuestBooking,
-            });
+        transaction.set(appointmentRef, {
+          'salonId': widget.salonId,
+          'serviceId': widget.service.id,
+          'professionalId': widget.professional.id,
+          'customerId': customerId,
+          'customerName': customerName,
+          'customerEmail': customerEmail,
+          'startTime': Timestamp.fromDate(startTime),
+          'endTime': Timestamp.fromDate(endTime),
+          'status': 'pendiente',
+          'createdAt': FieldValue.serverTimestamp(),
+          'isGuest': isGuestBooking,
+        });
       });
 
       final appointmentId = appointmentRef.id;
-      final confirmUrl = 'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/confirmAppointment?id=$appointmentId';
-      final cancelUrl = 'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/cancelAppointment?id=$appointmentId';
+      final confirmUrl =
+          'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/confirmAppointment?id=$appointmentId';
+      final cancelUrl =
+          'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/cancelAppointment?id=$appointmentId';
 
       final formattedDate = DateFormat(
         'EEEE d \'de\' MMMM, yyyy',
         'es_ES',
       ).format(startTime);
       final formattedTime = DateFormat('hh:mm a').format(startTime);
+
+      // --- INICIO DE LA PLANTILLA DE CORREO MEJORADA ---
+      final String htmlBody =
+          '''
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Confirmación de Cita</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              margin: 0;
+              padding: 0;
+              background-color: #f4f4f7;
+              color: #333;
+            }
+            .container {
+              max-width: 600px;
+              margin: 20px auto;
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            }
+            .header {
+              background-color: #00796b; /* Un tono de teal más oscuro */
+              color: #ffffff;
+              padding: 24px;
+              text-align: center;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 24px;
+            }
+            .content {
+              padding: 32px;
+            }
+            .content p {
+              line-height: 1.6;
+              margin: 0 0 16px;
+            }
+            .details {
+              background-color: #f9f9f9;
+              border: 1px solid #eeeeee;
+              border-radius: 4px;
+              padding: 20px;
+              margin-top: 20px;
+            }
+            .details strong {
+              color: #004d40; /* Teal muy oscuro */
+            }
+            .button-container {
+              text-align: center;
+              margin-top: 24px;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 24px;
+              font-size: 16px;
+              font-weight: bold;
+              color: #ffffff;
+              text-decoration: none;
+              border-radius: 5px;
+              background-color: #009688; /* Teal principal */
+            }
+            .button.cancel {
+              background-color: #f44336; /* Rojo para cancelar */
+              margin-left: 10px;
+            }
+            .footer {
+              text-align: center;
+              padding: 20px;
+              font-size: 12px;
+              color: #888;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>¡Cita Pre-Agendada!</h1>
+            </div>
+            <div class="content">
+              <p>¡Hola <strong>$customerName</strong>!</p>
+              <p>Hemos recibido tu solicitud de cita. Por favor, revisa los detalles y confirma tu asistencia para asegurar tu horario.</p>
+              <div class="details">
+                <p><strong>Servicio:</strong> ${serviceData['nombre']}</p>
+                <p><strong>Profesional:</strong> ${professionalData['nombre']}</p>
+                <p><strong>Fecha:</strong> $formattedDate</p>
+                <p><strong>Hora:</strong> $formattedTime</p>
+              </div>
+              <div class="button-container">
+                <a href="$confirmUrl" class="button">Confirmar Cita</a>
+              </div>
+               <p style="margin-top: 24px; text-align: center; font-size: 14px;">Si no puedes asistir, puedes cancelar tu cita aquí:</p>
+              <div class="button-container" style="margin-top: 8px;">
+                 <a href="$cancelUrl" class="button cancel">Cancelar Cita</a>
+              </div>
+            </div>
+            <div class="footer">
+              <p>Este es un correo automático, por favor no respondas.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      ''';
+      // --- FIN DE LA PLANTILLA DE CORREO MEJORADA ---
+
       await NotificationService.sendEmail(
         to: customerEmail,
-        subject: 'Confirma tu cita',
-        htmlBody:
-            '''<h1>¡Hola $customerName!</h1><p>Tu cita ha sido pre-agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p><p>Por favor, confirma tu cita haciendo clic en el siguiente botón:</p><a href="$confirmUrl"><button>Confirmar Cita</button></a><p>Si no puedes asistir, puedes cancelar tu cita aquí:</p><a href="$cancelUrl"><button>Cancelar Cita</button></a>''',
+        subject: 'Confirma tu cita para ${serviceData['nombre']}',
+        htmlBody: htmlBody,
       );
 
       if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
@@ -328,14 +441,18 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Tu Nombre Completo'),
+                  decoration: const InputDecoration(
+                    labelText: 'Tu Nombre Completo',
+                  ),
                   validator: (value) =>
                       value!.isEmpty ? 'Campo requerido' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Tu Correo Electrónico'),
+                  decoration: const InputDecoration(
+                    labelText: 'Tu Correo Electrónico',
+                  ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) => value!.isEmpty || !value.contains('@')
                       ? 'Email inválido'
@@ -380,10 +497,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Resumen de tu Cita:',
-                style: theme.textTheme.headlineSmall,
-              ),
+              Text('Resumen de tu Cita:', style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               CustomCard(
                 icon: Icons.cut,
@@ -427,32 +541,40 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                 _isLoadingSlots
                     ? const Center(child: CircularProgressIndicator())
                     : _timeSlots.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No hay horas disponibles para este día.',
-                            ),
-                          )
-                        : Wrap(
-                            spacing: 8.0,
-                            runSpacing: 8.0,
-                            children: _timeSlots.map((slot) {
-                              final isSelected = _selectedTime == slot.time;
-                              final isFullyBooked = slot.bookings >= _slotsPerTime;
-                              final canBook =
-                                  !isFullyBooked && !slot.isCurrentUserBooked;
+                    ? const Center(
+                        child: Text('No hay horas disponibles para este día.'),
+                      )
+                    : Wrap(
+                        spacing: 8.0,
+                        runSpacing: 8.0,
+                        children: _timeSlots.map((slot) {
+                          final isSelected = _selectedTime == slot.time;
+                          final isFullyBooked = slot.bookings >= _slotsPerTime;
+                          final canBook =
+                              !isFullyBooked && !slot.isCurrentUserBooked;
 
-                              return CustomButton(
-                                text: slot.time.format(context),
-                                onPressed: canBook
-                                    ? () {
-                                        setState(() {
-                                          _selectedTime = slot.time;
-                                        });
-                                      }
-                                    : () {},
-                              );
-                            }).toList(),
-                          ),
+                          Color buttonColor;
+                          if (isSelected) {
+                            buttonColor = Colors.deepPurple;
+                          } else if (!canBook) {
+                            buttonColor = Colors.grey[400]!;
+                          } else {
+                            buttonColor = Colors.green;
+                          }
+
+                          return CustomButton(
+                            text: slot.time.format(context),
+                            backgroundColor: buttonColor,
+                            onPressed: canBook
+                                ? () {
+                                    setState(() {
+                                      _selectedTime = slot.time;
+                                    });
+                                  }
+                                : () {},
+                          );
+                        }).toList(),
+                      ),
               if (_selectedDay != null &&
                   !_isLoadingSlots &&
                   _timeSlots.isNotEmpty)
