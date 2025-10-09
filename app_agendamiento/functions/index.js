@@ -50,63 +50,37 @@ exports.sendEmail = functions.runWith({ secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD
 
 // Esta función se activa cada vez que se crea un nuevo documento en 'appointments'
 exports.sendNewAppointmentNotification = functions.firestore
-  .document("appointments/{appointmentId}")
+  .document('appointments/{appointmentId}')
   .onCreate(async (snap, context) => {
-    const appointmentData = snap.data();
+    const appointment = snap.data();
 
-    // 1. Obtener el ID del documento del profesional
-    const professionalDocId = appointmentData.professionalId;
-    
-    // 2. Obtener el documento del profesional para encontrar su UID
-    const professionalDoc = await admin
-        .firestore()
-        .collection("professionals")
-        .doc(professionalDocId)
-        .get();
+    // Agrega logs para depuración
+    console.log('Datos de la cita:', appointment);
 
-    if (!professionalDoc.exists) {
-      console.log("No se encontró el perfil del profesional.");
-      return;
-    }
+    // Asegúrate de que el token existe
+    const token = appointment?.professionalToken;
+    console.log('Token de notificación del profesional:', token);
 
-    const professionalUid = professionalDoc.data().uid;
-    if (!professionalUid) {
-      console.log("El profesional no tiene un UID de usuario asociado.");
-      return;
-    }
-    
-    // 3. Buscar el documento del usuario del profesional para obtener su token FCM
-    const userDoc = await admin
-      .firestore()
-      .collection("users")
-      .doc(professionalUid)
-      .get();
-    
-    if (!userDoc.exists) {
-      console.log("No se encontró el usuario del profesional.");
-      return;
-    }
-
-    const fcmToken = userDoc.data().fcmToken;
-    if (!fcmToken) {
-      console.log("El profesional no tiene un token FCM para notificar.");
-      return;
-    }
-
-    // 4. Preparar el mensaje de la notificación
+    // Construye el payload
     const payload = {
       notification: {
-        title: "¡Nueva Cita Agendada!",
-        body: `${appointmentData.customerName} ha agendado una cita contigo.`,
+        title: 'Nueva cita registrada',
+        body: `Tienes una nueva cita para el ${appointment?.date || 'fecha desconocida'}`,
       },
+      token: token,
     };
+    console.log('Payload a enviar:', payload);
 
-    // 5. Enviar la notificación
+    if (!token) {
+      console.error('No se encontró token de notificación para el profesional');
+      return;
+    }
+
     try {
-      await admin.messaging().sendToDevice(fcmToken, payload);
-      console.log("Notificación push enviada con éxito.");
+      await admin.messaging().send(payload);
+      console.log('Notificación enviada correctamente');
     } catch (error) {
-      console.error("Error al enviar la notificación push:", error);
+      console.error('Error al enviar la notificación push:', error);
     }
   });
 
