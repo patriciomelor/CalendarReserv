@@ -1,6 +1,8 @@
 // lib/screens/public_booking_page.dart
 
 import 'package:agend_app/screens/booking_calendar_screen.dart'; // Reutilizamos el calendario
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -29,7 +31,7 @@ class PublicBookingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Agendar Cita')),
+      appBar: const CustomAppBar(title: 'Agendar Cita'),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _fetchInitialData(),
         builder: (context, snapshot) {
@@ -106,12 +108,11 @@ class PublicBookingPage extends StatelessWidget {
                         final serviceData =
                             serviceDoc.data() as Map<String, dynamic>;
 
-                        return ListTile(
-                          title: Text(serviceData['nombre']),
-                          subtitle: Text(
-                            '\$${serviceData['precio']} - ${serviceData['duracion']} min',
-                          ),
-                          trailing: const Icon(Icons.arrow_forward_ios),
+                        return CustomCard(
+                          icon: Icons.cut,
+                          title: serviceData['nombre'],
+                          subtitle:
+                              '\$${serviceData['precio']} - ${serviceData['duracion']} min',
                           onTap: () {
                             // Al seleccionar un servicio, vamos directo al calendario
                             Navigator.push(

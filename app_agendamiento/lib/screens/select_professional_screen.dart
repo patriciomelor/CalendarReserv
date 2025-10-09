@@ -1,6 +1,8 @@
 // lib/screens/select_professional_screen.dart
 
 import 'package:agend_app/screens/booking_calendar_screen.dart';
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -17,10 +19,7 @@ class SelectProfessionalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('2. Selecciona un Profesional'),
-        backgroundColor: Colors.blueAccent,
-      ),
+      appBar: const CustomAppBar(title: '2. Selecciona un Profesional'),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('professionals')
@@ -45,10 +44,10 @@ class SelectProfessionalScreen extends StatelessWidget {
               final professionalData =
                   professional.data() as Map<String, dynamic>;
 
-              return ListTile(
-                title: Text(professionalData['nombre']),
-                subtitle: Text(professionalData['especialidad']),
-                trailing: const Icon(Icons.arrow_forward_ios),
+              return CustomCard(
+                icon: Icons.person,
+                title: professionalData['nombre'],
+                subtitle: professionalData['especialidad'],
                 onTap: () {
                   // Navegamos al calendario, pasando todo lo que hemos seleccionado
                   Navigator.push(

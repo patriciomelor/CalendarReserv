@@ -2,33 +2,12 @@
 
 import 'package:agend_app/screens/home_screen.dart';
 import 'package:agend_app/screens/login_or_register_screen.dart';
-import 'package:agend_app/services/fcm_service.dart'; // NUEVO IMPORT
+import 'package:agend_app/services/fcm_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class AuthGate extends StatefulWidget {
-  // MODIFICADO a StatefulWidget
+class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
-
-  @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  // NUEVA CLASE State
-
-  @override
-  void initState() {
-    super.initState();
-    // Cuando el AuthGate se inicie, verificamos si el usuario está logueado
-    // para inicializar las notificaciones y guardar su token.
-    FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (user != null && !user.isAnonymous) {
-        // No guardamos token para invitados
-        FcmService().initNotifications();
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +15,22 @@ class _AuthGateState extends State<AuthGate> {
       body: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
           if (snapshot.hasData) {
-            return const HomeScreen();
+            if (snapshot.data!.isAnonymous) {
+              return const HomeScreen();
+            }
+            return FutureBuilder(
+              future: FcmService().initNotifications(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return const HomeScreen();
+              },
+            );
           } else {
             return const LoginOrRegisterScreen();
           }

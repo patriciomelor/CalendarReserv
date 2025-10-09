@@ -1,6 +1,8 @@
 // lib/screens/select_service_screen.dart
 
 import 'package:agend_app/screens/select_professional_screen.dart';
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -11,10 +13,7 @@ class SelectServiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('1. Selecciona un Servicio'),
-        backgroundColor: Colors.blueAccent,
-      ),
+      appBar: const CustomAppBar(title: '1. Selecciona un Servicio'),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('services')
@@ -38,12 +37,11 @@ class SelectServiceScreen extends StatelessWidget {
               final service = services[index];
               final serviceData = service.data() as Map<String, dynamic>;
 
-              return ListTile(
-                title: Text(serviceData['nombre']),
-                subtitle: Text(
-                  '\$${serviceData['precio']} - ${serviceData['duracion']} min',
-                ),
-                trailing: const Icon(Icons.arrow_forward_ios),
+              return CustomCard(
+                icon: Icons.cut,
+                title: serviceData['nombre'],
+                subtitle:
+                    '\$${serviceData['precio']} - ${serviceData['duracion']} min',
                 onTap: () {
                   // Navegamos al siguiente paso, pasando el salón y el servicio seleccionado
                   Navigator.push(

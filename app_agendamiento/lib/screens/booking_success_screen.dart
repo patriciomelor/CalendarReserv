@@ -1,5 +1,8 @@
 // lib/screens/booking_success_screen.dart
 
+import 'package:agend_app/screens/login_or_register_screen.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 
 class BookingSuccessScreen extends StatelessWidget {
@@ -8,9 +11,8 @@ class BookingSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('¡Cita Confirmada!'),
-        automaticallyImplyLeading: false, // Oculta el botón de retroceso
+      appBar: const CustomAppBar(
+        title: '¡Cita Confirmada!',
       ),
       body: Center(
         child: Padding(
@@ -20,24 +22,28 @@ class BookingSuccessScreen extends StatelessWidget {
             children: [
               const Icon(Icons.check_circle, color: Colors.green, size: 100),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 '¡Tu cita ha sido agendada con éxito!',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 'Recibirás un correo electrónico con los detalles.',
-                style: TextStyle(fontSize: 16),
+                style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
-              ElevatedButton(
+              CustomButton(
+                text: 'Volver al Inicio',
                 onPressed: () {
-                  // Cierra esta pantalla y todas las anteriores del flujo de reserva
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => LoginOrRegisterScreen(),
+                    ),
+                    (route) => false,
+                  );
                 },
-                child: const Text('Volver al Inicio'),
               ),
             ],
           ),

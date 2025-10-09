@@ -1,5 +1,7 @@
 // lib/screens/salon_agenda_screen.dart
 
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -65,10 +67,8 @@ class SalonAgendaScreen extends StatelessWidget {
     final endOfToday = startOfToday.add(const Duration(days: 1));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Agenda de Hoy (${DateFormat('d/M/y').format(now)})'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
+      appBar: CustomAppBar(
+        title: 'Agenda de Hoy (${DateFormat('d/M/y').format(now)})',
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -122,27 +122,11 @@ class SalonAgendaScreen extends StatelessWidget {
                     'HH:mm',
                   ).format(appointment.startTime);
 
-                  return Card(
-                    color: appointment.status == 'cancelada'
-                        ? Colors.grey[300]
-                        : Colors.white,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: appointment.status == 'cancelada'
-                            ? Colors.grey
-                            : Colors.indigo,
-                        foregroundColor: Colors.white,
-                        child: Text(formattedTime),
-                      ),
-                      title: Text(appointment.customerName),
-                      subtitle: Text(
-                        '${appointment.serviceName} con ${appointment.professionalName}',
-                      ),
-                    ),
+                  return CustomCard(
+                    icon: Icons.person,
+                    title: appointment.customerName,
+                    subtitle: '${appointment.serviceName} con ${appointment.professionalName}',
+                    trailing: Text(formattedTime),
                   );
                 },
               );

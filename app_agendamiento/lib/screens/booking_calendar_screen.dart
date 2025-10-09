@@ -1,10 +1,12 @@
 // lib/screens/booking_calendar_screen.dart
 
 import 'package:agend_app/screens/booking_success_screen.dart';
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:agend_app/services/notification_service.dart';
@@ -132,20 +134,26 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         }
 
         final bookingsForSlot = bookedSlots
-            .where((booked) =>
-                booked['startTime']!.hour == slotTime.hour &&
-                booked['startTime']!.minute == slotTime.minute)
+            .where(
+              (booked) =>
+                  booked['startTime']!.hour == slotTime.hour &&
+                  booked['startTime']!.minute == slotTime.minute,
+            )
             .toList();
 
-        final isCurrentUserBooked = currentUser != null &&
+        final isCurrentUserBooked =
+            currentUser != null &&
             bookingsForSlot.any(
-                (booking) => booking['customerId'] == currentUser.uid);
+              (booking) => booking['customerId'] == currentUser.uid,
+            );
 
-        potentialSlots.add(TimeSlot(
-          time: slotTime,
-          bookings: bookingsForSlot.length,
-          isCurrentUserBooked: isCurrentUserBooked,
-        ));
+        potentialSlots.add(
+          TimeSlot(
+            time: slotTime,
+            bookings: bookingsForSlot.length,
+            isCurrentUserBooked: isCurrentUserBooked,
+          ),
+        );
 
         currentTime = currentTime.add(const Duration(minutes: 15));
       }
@@ -218,6 +226,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       );
       final endTime = startTime.add(Duration(minutes: serviceDuration));
 
+      final appointmentRef = FirebaseFirestore.instance.collection('appointments').doc();
+
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final query = FirebaseFirestore.instance
             .collection('appointments')
@@ -232,24 +242,31 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           );
         }
 
-        if (existingAppointments.docs
-            .any((doc) => doc.data()['customerId'] == customerId)) {
+        if (existingAppointments.docs.any(
+          (doc) => doc.data()['customerId'] == customerId,
+        )) {
           throw Exception('Ya tienes una cita en este horario.');
         }
 
-        transaction.set(FirebaseFirestore.instance.collection('appointments').doc(), {
-          'salonId': widget.salonId,
-          'serviceId': widget.service.id,
-          'professionalId': widget.professional.id,
-          'customerId': customerId,
-          'customerName': customerName,
-          'customerEmail': customerEmail,
-          'startTime': Timestamp.fromDate(startTime),
-          'endTime': Timestamp.fromDate(endTime),
-          'status': 'confirmada',
-          'isGuest': isGuestBooking,
-        });
+        transaction
+            .set(appointmentRef, {
+              'salonId': widget.salonId,
+              'serviceId': widget.service.id,
+              'professionalId': widget.professional.id,
+              'customerId': customerId,
+              'customerName': customerName,
+              'customerEmail': customerEmail,
+              'startTime': Timestamp.fromDate(startTime),
+              'endTime': Timestamp.fromDate(endTime),
+              'status': 'pendiente',
+              'createdAt': FieldValue.serverTimestamp(),
+              'isGuest': isGuestBooking,
+            });
       });
+
+      final appointmentId = appointmentRef.id;
+      final confirmUrl = 'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/confirmAppointment?id=$appointmentId';
+      final cancelUrl = 'https://us-central1-appagendamiento-ddbd0.cloudfunctions.net/cancelAppointment?id=$appointmentId';
 
       final formattedDate = DateFormat(
         'EEEE d \'de\' MMMM, yyyy',
@@ -258,9 +275,9 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       final formattedTime = DateFormat('hh:mm a').format(startTime);
       await NotificationService.sendEmail(
         to: customerEmail,
-        subject: '¡Tu cita ha sido confirmada!',
+        subject: 'Confirma tu cita',
         htmlBody:
-            '''<h1>¡Hola $customerName!</h1><p>Tu cita ha sido agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p>''',
+            '''<h1>¡Hola $customerName!</h1><p>Tu cita ha sido pre-agendada con éxito.</p><p><strong>Servicio:</strong> ${serviceData['nombre']}</p><p><strong>Profesional:</strong> ${professionalData['nombre']}</p><p><strong>Fecha:</strong> $formattedDate a las $formattedTime</p><p>Por favor, confirma tu cita haciendo clic en el siguiente botón:</p><a href="$confirmUrl"><button>Confirmar Cita</button></a><p>Si no puedes asistir, puedes cancelar tu cita aquí:</p><a href="$cancelUrl"><button>Cancelar Cita</button></a>''',
       );
 
       if (mounted) Navigator.of(context).pop(); // Cierra el diálogo de carga
@@ -275,8 +292,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('¡Cita agendada con éxito!', style: GoogleFonts.poppins()),
+            const SnackBar(
+              content: Text('¡Cita agendada con éxito!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -303,7 +320,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Datos para la Reserva', style: GoogleFonts.poppins()),
+          title: const Text('Datos para la Reserva'),
           content: Form(
             key: formKey,
             child: Column(
@@ -311,19 +328,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Tu Nombre Completo',
-                    labelStyle: GoogleFonts.poppins(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Tu Nombre Completo'),
                   validator: (value) =>
                       value!.isEmpty ? 'Campo requerido' : null,
                 ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Tu Correo Electrónico',
-                    labelStyle: GoogleFonts.poppins(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Tu Correo Electrónico'),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) => value!.isEmpty || !value.contains('@')
                       ? 'Email inválido'
@@ -335,9 +347,10 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancelar', style: GoogleFonts.poppins()),
+              child: const Text('Cancelar'),
             ),
-            ElevatedButton(
+            CustomButton(
+              text: 'Confirmar',
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   Navigator.of(context).pop({
@@ -346,7 +359,6 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                   });
                 }
               },
-              child: Text('Confirmar', style: GoogleFonts.poppins()),
             ),
           ],
         );
@@ -358,14 +370,10 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   Widget build(BuildContext context) {
     final serviceData = widget.service.data() as Map<String, dynamic>;
     final professionalData = widget.professional.data() as Map<String, dynamic>;
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text('3. Selecciona Fecha y Hora', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
+      appBar: const CustomAppBar(title: '3. Selecciona Fecha y Hora'),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -374,16 +382,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
             children: [
               Text(
                 'Resumen de tu Cita:',
-                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+                style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  title: Text('Servicio: ${serviceData['nombre']}', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Profesional: ${professionalData['nombre']}', style: GoogleFonts.poppins()),
-                ),
+              CustomCard(
+                icon: Icons.cut,
+                title: serviceData['nombre'] ?? 'Servicio no encontrado',
+                subtitle:
+                    'con ${professionalData['nombre'] ?? 'Profesional no encontrado'}',
               ),
               const SizedBox(height: 20),
               TableCalendar(
@@ -402,17 +408,17 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                 },
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
-                    color: Colors.blueAccent.withOpacity(0.5),
+                    color: theme.primaryColor.withOpacity(0.5),
                     shape: BoxShape.circle,
                   ),
-                  selectedDecoration: const BoxDecoration(
-                    color: Colors.blueAccent,
+                  selectedDecoration: BoxDecoration(
+                    color: theme.primaryColor,
                     shape: BoxShape.circle,
                   ),
                 ),
                 headerStyle: HeaderStyle(
                   titleCentered: true,
-                  titleTextStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  titleTextStyle: theme.textTheme.titleLarge!,
                   formatButtonVisible: false,
                 ),
               ),
@@ -421,37 +427,32 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                 _isLoadingSlots
                     ? const Center(child: CircularProgressIndicator())
                     : _timeSlots.isEmpty
-                    ? Center(
-                        child: Text('No hay horas disponibles para este día.', style: GoogleFonts.poppins()),
-                      )
-                    : Wrap(
-                        spacing: 8.0,
-                        runSpacing: 8.0,
-                        children: _timeSlots.map((slot) {
-                          final isSelected = _selectedTime == slot.time;
-                          final isFullyBooked = slot.bookings >= _slotsPerTime;
-                          final canBook = !isFullyBooked && !slot.isCurrentUserBooked;
-
-                          return ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isSelected
-                                  ? Colors.deepPurple
-                                  : canBook
-                                  ? Colors.green
-                                  : Colors.grey[400],
-                              foregroundColor: Colors.white,
+                        ? const Center(
+                            child: Text(
+                              'No hay horas disponibles para este día.',
                             ),
-                            onPressed: canBook
-                                ? () {
-                                    setState(() {
-                                      _selectedTime = slot.time;
-                                    });
-                                  }
-                                : null,
-                            child: Text(slot.time.format(context)),
-                          );
-                        }).toList(),
-                      ),
+                          )
+                        : Wrap(
+                            spacing: 8.0,
+                            runSpacing: 8.0,
+                            children: _timeSlots.map((slot) {
+                              final isSelected = _selectedTime == slot.time;
+                              final isFullyBooked = slot.bookings >= _slotsPerTime;
+                              final canBook =
+                                  !isFullyBooked && !slot.isCurrentUserBooked;
+
+                              return CustomButton(
+                                text: slot.time.format(context),
+                                onPressed: canBook
+                                    ? () {
+                                        setState(() {
+                                          _selectedTime = slot.time;
+                                        });
+                                      }
+                                    : () {},
+                              );
+                            }).toList(),
+                          ),
               if (_selectedDay != null &&
                   !_isLoadingSlots &&
                   _timeSlots.isNotEmpty)
@@ -473,21 +474,10 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                   padding: const EdgeInsets.only(top: 24.0),
                   child: SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(
-                        Icons.check_circle_outline,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        'Confirmar Cita',
-                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    child: CustomButton(
+                      text: 'Confirmar Cita',
                       onPressed: _bookAppointment,
+                      icon: Icons.check_circle_outline,
                     ),
                   ),
                 ),
@@ -503,7 +493,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       children: [
         Container(width: 16, height: 16, color: color),
         const SizedBox(width: 8),
-        Text(text, style: GoogleFonts.poppins()),
+        Text(text),
       ],
     );
   }

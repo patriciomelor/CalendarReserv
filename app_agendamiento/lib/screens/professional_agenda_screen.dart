@@ -1,10 +1,10 @@
 // lib/screens/professional_agenda_screen.dart
 
+import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -27,7 +27,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
   Widget build(BuildContext context) {
     final professionalId = widget.userData['professionalId'];
     final salonId = widget.userData['salonId'];
-    final textColor = const Color(0xFF333333);
+    final theme = Theme.of(context);
 
     final startOfDay = DateTime(
       _selectedDay.year,
@@ -38,7 +38,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
 
     if (professionalId == null || salonId == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Error de Configuración')),
+        appBar: AppBar(title: const Text('Error de Configuración')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -47,7 +47,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
               'Falta el ID de profesional o el ID del salón. '
               'Por favor, contacta al administrador.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.red[700], fontSize: 16),
+              style: TextStyle(color: theme.colorScheme.error, fontSize: 16),
             ),
           ),
         ),
@@ -55,92 +55,60 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
       body: CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  title: Text(
-                    'Mi Agenda',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: textColor, fontSize: 22),
-                  ),
-                  centerTitle: false,
-                  elevation: 0,
-                  backgroundColor: const Color(0xFFF8F9FA),
-                  foregroundColor: textColor,
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.share_outlined),
-                      tooltip: 'Copiar mi enlace de reserva',
-                      onPressed: () {
-                        if (salonId != null && professionalId != null) {
-                          final webUrl = Uri.base;
-                          final bookingUrl =
-                              '${webUrl.origin}/#/book/$salonId/$professionalId';
-                          Clipboard.setData(ClipboardData(text: bookingUrl));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Enlace de reserva copiado al portapapeles.',
-                                style: GoogleFonts.poppins(),
-                              ),
-                              backgroundColor: const Color(0xFF4A90E2),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.logout_outlined),
-                      onPressed: () => FirebaseAuth.instance.signOut(),
-                    ),
-                  ],
-                  bottom: PreferredSize(
-                    preferredSize: const Size.fromHeight(1.0),
-                    child: Container(
-                      color: Colors.grey[200],
-                      height: 1.0,
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _buildCalendar(),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
-                    child: Text(
-                      'Citas para el ${DateFormat('d MMM yyyy', 'es_ES').format(_selectedDay)}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            title: Text('Mi Agenda (ID: $professionalId)'),
+            centerTitle: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share_outlined),
+                tooltip: 'Copiar mi enlace de reserva',
+                onPressed: () {
+                  if (salonId != null && professionalId != null) {
+                    final webUrl = Uri.base;
+                    final bookingUrl =
+                        '${webUrl.origin}/#/book/$salonId/$professionalId';
+                    Clipboard.setData(ClipboardData(text: bookingUrl));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'Enlace de reserva copiado al portapapeles.',
+                        ),
+                        backgroundColor: theme.primaryColor,
                       ),
-                    ),
-                  ),
-                ),
-                _buildAppointmentList(professionalId, startOfDay, endOfDay),
-              ],
+                    );
+                  }
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_outlined),
+                onPressed: () => FirebaseAuth.instance.signOut(),
+              ),
+            ],
+          ),
+          SliverToBoxAdapter(
+            child: _buildCalendar(theme),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
+              child: Text(
+                'Citas para el ${DateFormat('d MMM yyyy', 'es_ES').format(_selectedDay)}',
+                style: theme.textTheme.headlineSmall,
+              ),
             ),
+          ),
+          _buildAppointmentList(professionalId, startOfDay, endOfDay, theme),
+        ],
+      ),
     );
   }
 
-  Widget _buildCalendar() {
-    return Container(
+  Widget _buildCalendar(ThemeData theme) {
+    return Card(
       margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: TableCalendar(
         locale: 'es_ES',
         firstDay: DateTime.now().subtract(const Duration(days: 365)),
@@ -155,17 +123,17 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
         },
         calendarStyle: CalendarStyle(
           todayDecoration: BoxDecoration(
-            color: const Color(0xFF4A90E2).withOpacity(0.5),
+            color: theme.primaryColor.withOpacity(0.5),
             shape: BoxShape.circle,
           ),
-          selectedDecoration: const BoxDecoration(
-            color: Color(0xFF4A90E2),
+          selectedDecoration: BoxDecoration(
+            color: theme.primaryColor,
             shape: BoxShape.circle,
           ),
         ),
         headerStyle: HeaderStyle(
           titleCentered: true,
-          titleTextStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+          titleTextStyle: theme.textTheme.titleLarge!,
           formatButtonVisible: false,
         ),
       ),
@@ -173,12 +141,12 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
   }
 
   Widget _buildAppointmentList(
-      String professionalId, DateTime startOfDay, DateTime endOfDay) {
+      String professionalId, DateTime startOfDay, DateTime endOfDay, ThemeData theme) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('appointments')
           .where('professionalId', isEqualTo: professionalId)
-          .where('status', isEqualTo: 'confirmada')
+          .where('status', whereIn: ['confirmada', 'pendiente'])
           .where(
             'startTime',
             isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
@@ -195,7 +163,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
             child: Center(
               child: Text(
                 'No tienes citas para este día.',
-                style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600]),
+                style: theme.textTheme.titleMedium,
               ),
             ),
           );
@@ -209,56 +177,26 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
                 final appointmentDoc = appointments[index];
                 final appointment = appointmentDoc.data() as Map<String, dynamic>;
                 final startTime = (appointment['startTime'] as Timestamp).toDate();
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                     boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.08),
-                          spreadRadius: 1,
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    leading: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4A90E2).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                final status = appointment['status'];
+                return CustomCard(
+                  title: appointment['customerName'] ?? 'Cliente',
+                  subtitle: appointment['customerEmail'] ?? 'No especificado',
+                  icon: Icons.person,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(status),
+                      PopupMenuButton<String>(
+                        onSelected: (_) => _cancelAppointment(context, appointmentDoc),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'cancel',
+                            child: Text('Cancelar Cita'),
+                          ),
+                        ],
+                        icon: Icon(Icons.more_vert, color: Colors.grey[600]),
                       ),
-                      child: Text(
-                        DateFormat('HH:mm').format(startTime),
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF4A90E2),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      appointment['customerName'] ?? 'Cliente',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFF333333)),
-                    ),
-                    subtitle: Text(
-                      appointment['customerEmail'] ?? 'No especificado',
-                      style: GoogleFonts.poppins(color: Colors.grey[600]),
-                    ),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (_) => _cancelAppointment(context, appointmentDoc),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'cancel',
-                          child: Text('Cancelar Cita', style: GoogleFonts.poppins()),
-                        ),
-                      ],
-                      icon: Icon(Icons.more_vert, color: Colors.grey[600]),
-                    ),
+                    ],
                   ),
                 );
               },

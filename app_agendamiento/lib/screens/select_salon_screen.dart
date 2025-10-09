@@ -1,9 +1,11 @@
 // lib/screens/select_salon_screen.dart
 
 import 'package:agend_app/screens/select_service_screen.dart';
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SelectSalonScreen extends StatefulWidget {
   const SelectSalonScreen({super.key});
@@ -18,29 +20,32 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Elige un Salón',
-          style: GoogleFonts.lato(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: theme.primaryColor,
-        foregroundColor: theme.colorScheme.onPrimary,
-        elevation: 0,
+      appBar: const CustomAppBar(
+        title: 'Elige un Salón',
       ),
       body: Column(
         children: [
           // Barra de Búsqueda
-          _buildSearchBar(theme, isDarkMode),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              onChanged: (value) => setState(() => _searchQuery = value),
+              decoration: InputDecoration(
+                labelText: 'Buscar por nombre o dirección...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+              ),
+            ),
+          ),
 
           // Lista de Salones
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('salons').snapshots(),
+              stream: FirebaseFirestore.instance.collection('salones').snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -63,8 +68,8 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
                 // Filtrar salones según la búsqueda
                 final filteredSalons = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
-                  final name = data['name']?.toString().toLowerCase() ?? '';
-                  final address = data['address']?.toString().toLowerCase() ?? '';
+                  final name = data['nombre']?.toString().toLowerCase() ?? '';
+                  final address = data['direccion']?.toString().toLowerCase() ?? '';
                   final query = _searchQuery.toLowerCase();
                   return name.contains(query) || address.contains(query);
                 }).toList();
@@ -84,79 +89,26 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
                     final salon = filteredSalons[index];
                     final salonData = salon.data() as Map<String, dynamic>;
 
-                    return _buildSalonCard(theme, salon, salonData);
+                    return CustomCard(
+                      title: salonData['name'] ?? 'Salón sin Nombre',
+                      subtitle: salonData['address'] ?? 'Sin Dirección',
+                      icon: Icons.store,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SelectServiceScreen(salonId: salon.id),
+                          ),
+                        );
+                      },
+                    );
                   },
                 );
               },
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // --- Widgets Refactorizados ---
-
-  Widget _buildSearchBar(ThemeData theme, bool isDarkMode) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        onChanged: (value) => setState(() => _searchQuery = value),
-        decoration: InputDecoration(
-          hintText: 'Buscar por nombre o dirección...',
-          prefixIcon: const Icon(Icons.search),
-          filled: true,
-          fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSalonCard(
-      ThemeData theme, DocumentSnapshot salon, Map<String, dynamic> salonData) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        title: Text(
-          salonData['name'] ?? 'Salón sin Nombre',
-          style: GoogleFonts.lato(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Text(
-            salonData['address'] ?? 'Sin Dirección',
-            style: GoogleFonts.lato(
-              fontSize: 14,
-              color: theme.colorScheme.secondary,
-            ),
-          ),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          color: theme.colorScheme.primary,
-          size: 18,
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SelectServiceScreen(salonId: salon.id),
-            ),
-          );
-        },
       ),
     );
   }
@@ -174,7 +126,7 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.lato(
+              style: TextStyle(
                 fontSize: 18,
                 color: color,
                 fontWeight: FontWeight.w600,

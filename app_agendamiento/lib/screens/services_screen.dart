@@ -1,5 +1,10 @@
 // lib/screens/services_screen.dart
 
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_button.dart';
+import 'package:agend_app/widgets/custom_fab.dart';
+import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,25 +38,22 @@ class _ServicesScreenState extends State<ServicesScreen> {
             children: [
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del Servicio',
-                ),
+                decoration: const InputDecoration(labelText: 'Nombre del Servicio'),
               ),
+              const SizedBox(height: 16),
               TextField(
                 controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Precio (ej: 10000)',
-                ),
+                decoration: const InputDecoration(labelText: 'Precio (ej: 10000)'),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                 ], // Solo permite números
               ),
+              const SizedBox(height: 16),
               TextField(
                 controller: _durationController,
                 decoration: const InputDecoration(
-                  labelText: 'Duración (en minutos, ej: 30)',
-                ),
+                    labelText: 'Duración (en minutos, ej: 30)'),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -64,8 +66,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
               child: const Text('Cancelar'),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            ElevatedButton(
-              child: const Text('Añadir'),
+            CustomButton(
+              text: 'Añadir',
               onPressed: () {
                 _addService();
                 Navigator.of(context).pop();
@@ -100,14 +102,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gestionar Servicios'),
-        backgroundColor: Colors.teal,
-      ),
-      floatingActionButton: FloatingActionButton(
+      appBar: const CustomAppBar(title: 'Gestionar Servicios'),
+      floatingActionButton: CustomFAB(
         onPressed: _showAddServiceDialog,
-        backgroundColor: Colors.teal,
-        child: const Icon(Icons.add, color: Colors.white),
+        icon: Icons.add,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -142,14 +140,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
               final price = serviceData['precio'] ?? 0;
               final duration = serviceData['duracion'] ?? 0;
 
-              return ListTile(
-                leading: const Icon(Icons.cut),
-                title: Text(serviceData['nombre'] ?? 'Sin nombre'),
-                subtitle: Text('Precio: \$$price - Duración: $duration min'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => _deleteService(service.id),
-                ),
+              return CustomCard(
+                icon: Icons.cut,
+                title: serviceData['nombre'] ?? 'Sin nombre',
+                subtitle: 'Precio: \$price - Duración: $duration min',
+                onDelete: () => _deleteService(service.id),
               );
             },
           );

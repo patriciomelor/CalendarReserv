@@ -7,14 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:agend_app/screens/auth_gate.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'theme.dart'; // Importa tu tema
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initializeDateFormatting('es_ES', null);
-  await NotificationService().init(); // Inicializa el servicio de notificaciones locales
+  await NotificationService()
+      .init(); // Inicializa el servicio de notificaciones locales
 
   runApp(const MyApp());
 }
@@ -27,16 +28,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'App de Agendamiento',
-      theme: ThemeData(
-        brightness: Brightness.light,
-        primarySwatch: Colors.deepPurple,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.deepPurple,
-      ),
-      themeMode: ThemeMode.system,
-
+      theme: appTheme, // Usa el tema global
       // MODIFICADO: Usamos onGenerateRoute para manejar URLs dinámicas
       onGenerateRoute: (settings) {
         // Ejemplo de URL: /book/salonId/professionalId

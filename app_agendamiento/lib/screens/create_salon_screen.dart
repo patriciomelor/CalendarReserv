@@ -1,6 +1,9 @@
 // lib/screens/create_salon_screen.dart
 
 import 'package:agend_app/services/notification_service.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_button.dart';
+import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -55,27 +58,24 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
       final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
 
       // 1. Crear el nuevo usuario administrador en Firebase Auth
-      UserCredential userCredential = await tempAuth
-          .createUserWithEmailAndPassword(
-            email: _adminEmailController.text.trim(),
-            password: _adminPasswordController.text.trim(),
-          );
+      UserCredential userCredential = await tempAuth.createUserWithEmailAndPassword(
+        email: _adminEmailController.text.trim(),
+        password: _adminPasswordController.text.trim(),
+      );
       final adminUid = userCredential.user!.uid;
       await tempApp.delete(); // Cerramos la instancia temporal
 
       // 2. Crear el documento del salón en Firestore
-      final salonDocRef = await FirebaseFirestore.instance
-          .collection('salones')
-          .add({
-            'nombre': _salonNameController.text.trim(),
-            'direccion': _salonAddressController.text.trim(),
-            'telefono': _salonPhoneController.text.trim(),
-            'adminUid': adminUid, // Guardamos referencia al admin
-            // Valores por defecto para la configuración del salón
-            'openingTime': '09:00',
-            'closingTime': '18:00',
-            'workDays': [1, 2, 3, 4, 5], // Lunes a Viernes
-          });
+      final salonDocRef = await FirebaseFirestore.instance.collection('salones').add({
+        'nombre': _salonNameController.text.trim(),
+        'direccion': _salonAddressController.text.trim(),
+        'telefono': _salonPhoneController.text.trim(),
+        'adminUid': adminUid, // Guardamos referencia al admin
+        // Valores por defecto para la configuración del salón
+        'openingTime': '09:00',
+        'closingTime': '18:00',
+        'workDays': [1, 2, 3, 4, 5], // Lunes a Viernes
+      });
 
       // 3. Crear el documento del usuario admin en Firestore, vinculándolo al salón
       await FirebaseFirestore.instance.collection('users').doc(adminUid).set({
@@ -102,9 +102,8 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ocurrió un error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Ocurrió un error: $e')));
       }
     } finally {
       if (mounted) {
@@ -114,8 +113,7 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
     await NotificationService.sendEmail(
       to: _adminEmailController.text.trim(),
       subject: '¡Bienvenido! Tu cuenta de administrador ha sido creada.',
-      htmlBody:
-          '''
+      htmlBody: '''
     <h1>¡Hola ${_adminNameController.text.trim()}!</h1>
     <p>Tu cuenta para administrar el salón "${_salonNameController.text.trim()}" ha sido creada con éxito.</p>
     <p>Puedes iniciar sesión con: <strong>${_adminEmailController.text.trim()}</strong></p>
@@ -126,11 +124,7 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crear Nuevo Cliente'),
-        backgroundColor: const Color(0xFFB71C1C),
-        foregroundColor: Colors.white,
-      ),
+      appBar: const CustomAppBar(title: 'Crear Nuevo Cliente'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -138,41 +132,40 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Datos del Salón',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               const Divider(),
               TextFormField(
                 controller: _salonNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del Salón',
-                ),
+                decoration: const InputDecoration(labelText: 'Nombre del Salón'),
                 validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _salonAddressController,
                 decoration: const InputDecoration(labelText: 'Dirección'),
                 validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _salonPhoneController,
                 decoration: const InputDecoration(labelText: 'Teléfono'),
                 validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 30),
-              const Text(
+              Text(
                 'Datos del Administrador del Salón',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               const Divider(),
               TextFormField(
                 controller: _adminNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del Representante',
-                ),
+                decoration: const InputDecoration(labelText: 'Nombre del Representante'),
                 validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _adminEmailController,
                 decoration: const InputDecoration(labelText: 'Email de Acceso'),
@@ -181,11 +174,10 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
                     ? 'Email inválido'
                     : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _adminPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'Contraseña Provisional',
-                ),
+                decoration: const InputDecoration(labelText: 'Contraseña Provisional'),
                 obscureText: true,
                 validator: (value) =>
                     (value?.length ?? 0) < 6 ? 'Mínimo 6 caracteres' : null,
@@ -193,16 +185,9 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _createSalonAndAdmin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB71C1C),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Crear Cliente'),
+                child: CustomButton(
+                  text: 'Crear Cliente',
+                  onPressed: _isLoading ? () {} : _createSalonAndAdmin,
                 ),
               ),
             ],

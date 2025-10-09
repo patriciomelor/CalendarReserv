@@ -1,8 +1,9 @@
 // lib/screens/login_screen.dart
 
+import 'package:agend_app/widgets/custom_button.dart';
+import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback showRegisterPage;
@@ -60,10 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = const Color(0xFF333333);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -75,67 +73,58 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Text(
                     '¡Hola de Nuevo!',
-                    style: GoogleFonts.poppins(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+                    style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 10),
                   Text(
                     'Bienvenido de vuelta, te hemos extrañado.',
-                    style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey[600]),
+                    style: Theme.of(context).textTheme.titleMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 50),
-                  _buildTextField(_emailController, 'Correo Electrónico', isEmail: true),
+                  CustomTextField(
+                    controller: _emailController,
+                    label: 'Correo Electrónico',
+                    prefixIcon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
                   const SizedBox(height: 20),
-                  _buildTextField(_passwordController, 'Contraseña', isPassword: true),
+                  CustomTextField(
+                    controller: _passwordController,
+                    label: 'Contraseña',
+                    prefixIcon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
                   const SizedBox(height: 20),
                   if (_errorMessage.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10.0),
                       child: Text(
                         _errorMessage,
-                        style: GoogleFonts.poppins(color: Colors.red, fontSize: 14),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _signIn,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: const Color(0xFF4A90E2),
-                      ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                          : Text(
-                              'Iniciar Sesión',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    child: CustomButton(
+                      text: 'Iniciar Sesión',
+                      onPressed: _isLoading ? () {} : _signIn,
                     ),
                   ),
                   const SizedBox(height: 25),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('¿No eres miembro?', style: GoogleFonts.poppins(color: textColor)),
+                      const Text('¿No eres miembro?'),
                       TextButton(
                         onPressed: widget.showRegisterPage,
                         child: Text(
                           'Regístrate ahora',
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFF4A90E2),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -143,16 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text('o', style: GoogleFonts.poppins(color: Colors.grey[600])),
+                  const Text('o'),
                   TextButton(
                     onPressed: widget.onGuestContinue,
-                    child: Text(
-                      'Continuar como invitado',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: textColor,
-                      ),
-                    ),
+                    child: const Text('Continuar como invitado'),
                   ),
                 ],
               ),
@@ -160,33 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController controller, String label, {bool isEmail = false, bool isPassword = false}) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF4A90E2), width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        prefixIcon: Icon(isEmail ? Icons.email_outlined : Icons.lock_outline, color: Colors.grey[500]),
-      ),
-      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
     );
   }
 }

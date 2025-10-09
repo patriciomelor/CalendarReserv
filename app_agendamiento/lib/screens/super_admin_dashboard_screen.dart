@@ -1,5 +1,8 @@
 // lib/screens/super_admin_dashboard_screen.dart
 
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_fab.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -21,10 +24,8 @@ class SuperAdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Panel Super Admin: ${userData['nombre']}'),
-        backgroundColor: const Color(0xFFB71C1C), // Un rojo oscuro distintivo
-        foregroundColor: Colors.white,
+      appBar: CustomAppBar(
+        title: 'Panel Super Admin: ${userData['nombre']}',
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -32,19 +33,18 @@ class SuperAdminDashboardScreen extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: CustomFAB(
         onPressed: () => _addSalon(context),
-        backgroundColor: const Color(0xFFB71C1C),
-        child: const Icon(Icons.add_business, color: Colors.white),
+        icon: Icons.add_business,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Text(
               'Clientes Registrados (Salones)',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
           Expanded(
@@ -75,22 +75,11 @@ class SuperAdminDashboardScreen extends StatelessWidget {
                     final salon = salons[index];
                     final data = salon.data() as Map<String, dynamic>;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.storefront,
-                          color: Color(0xFFB71C1C),
-                        ),
-                        title: Text(data['nombre'] ?? 'Sin Nombre'),
-                        subtitle: Text(
+                    return CustomCard(
+                      icon: Icons.storefront,
+                      title: data['nombre'] ?? 'Sin Nombre',
+                      subtitle: 
                           'Dirección: ${data['direccion'] ?? 'No especificada'}',
-                        ),
-                        // En el futuro, al tocar aquí podríamos ver los detalles del salón
-                      ),
                     );
                   },
                 );

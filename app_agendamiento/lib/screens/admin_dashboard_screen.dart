@@ -1,13 +1,13 @@
 // lib/screens/admin_dashboard_screen.dart
 
 import 'package:agend_app/screens/salon_agenda_screen.dart';
+import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agend_app/screens/professionals_screen.dart';
 import 'package:agend_app/screens/services_screen.dart';
 import 'package:agend_app/screens/salon_settings_screen.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -25,7 +25,6 @@ class AdminDashboardScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
             .collection('salones')
@@ -55,13 +54,11 @@ class AdminDashboardScreen extends StatelessWidget {
               SliverAppBar(
                 title: Text(
                   salonData['nombre'] ?? 'Panel de Administración',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
                 ),
                 floating: true,
                 snap: true,
                 elevation: 0,
                 backgroundColor: Colors.transparent,
-                foregroundColor: Colors.black,
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.logout),
@@ -79,14 +76,13 @@ class AdminDashboardScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Bienvenido, ${userData['nombre']}!',
-                        style: GoogleFonts.poppins(fontSize: 18),
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 20),
-                      _buildManagementCard(
-                        context,
+                      CustomCard(
                         icon: Icons.calendar_month,
                         title: 'Agenda del Día',
-                        color: Colors.indigo,
+                        subtitle: 'Revisa y gestiona las citas de hoy',
                         onTap: () {
                           Navigator.push(
                             context,
@@ -100,10 +96,7 @@ class AdminDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 20),
                       Text(
                         'Opciones de Gestión',
-                        style: GoogleFonts.poppins(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 10),
                     ],
@@ -112,10 +105,10 @@ class AdminDashboardScreen extends StatelessWidget {
               ),
               SliverList(
                 delegate: SliverChildListDelegate([
-                  _buildManagementListTile(
-                    context,
+                  CustomCard(
                     icon: Icons.group,
                     title: 'Gestionar Profesionales',
+                    subtitle: 'Añade o elimina profesionales de tu salón',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -126,10 +119,10 @@ class AdminDashboardScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  _buildManagementListTile(
-                    context,
+                  CustomCard(
                     icon: Icons.cut,
                     title: 'Gestionar Servicios',
+                    subtitle: 'Define los servicios que ofreces',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -140,10 +133,10 @@ class AdminDashboardScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  _buildManagementListTile(
-                    context,
+                  CustomCard(
                     icon: Icons.settings,
                     title: 'Configuración del Salón',
+                    subtitle: 'Edita la información de tu salón',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -159,69 +152,6 @@ class AdminDashboardScreen extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildManagementCard(BuildContext context, {
-    required IconData icon,
-    required String title,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: color.withOpacity(0.1),
-                child: Icon(icon, color: color, size: 30),
-              ),
-              const SizedBox(width: 20),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              const Icon(Icons.arrow_forward_ios, size: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildManagementListTile(BuildContext context, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        leading: Icon(icon, color: Colors.grey[700]),
-        title: Text(
-          title,
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: onTap,
       ),
     );
   }

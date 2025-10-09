@@ -109,3 +109,61 @@ exports.sendNewAppointmentNotification = functions.firestore
       console.error("Error al enviar la notificación push:", error);
     }
   });
+
+exports.confirmAppointment = functions.https.onRequest(async (req, res) => {
+  const appointmentId = req.query.id;
+  if (!appointmentId) {
+    return res.status(400).send("Falta el ID de la cita.");
+  }
+
+  try {
+    await admin.firestore().collection("appointments").doc(appointmentId).update({
+      status: "confirmada",
+    });
+    return res.status(200).send("Cita confirmada con éxito.");
+  } catch (error) {
+    console.error("Error al confirmar la cita:", error);
+    return res.status(500).send("Error al confirmar la cita.");
+  }
+});
+
+exports.cancelAppointment = functions.https.onRequest(async (req, res) => {
+  const appointmentId = req.query.id;
+  if (!appointmentId) {
+    return res.status(400).send("Falta el ID de la cita.");
+  }
+
+  try {
+    await admin.firestore().collection("appointments").doc(appointmentId).update({
+      status: "cancelada",
+    });
+    return res.status(200).send("Cita cancelada con éxito.");
+  } catch (error) {
+    console.error("Error al cancelar la cita:", error);
+    return res.status(500).send("Error al cancelar la cita.");
+  }
+});
+
+exports.cancelPendingAppointments = functions.pubsub.schedule('every 60 minutes').onRun(async (context) => {
+  const now = admin.firestore.Timestamp.now();
+  const yesterday = admin.firestore.Timestamp.fromMillis(now.toMillis() - 24 * 60 * 60 * 1000);
+
+  const pendingAppointments = await admin.firestore().collection('appointments')
+    .where('status', '==', 'pendiente')
+    .where('createdAt', '<=', yesterday)
+    .get();
+
+  if (pendingAppointments.empty) {
+    console.log('No pending appointments to cancel.');
+    return null;
+  }
+
+  const batch = admin.firestore().batch();
+  pendingAppointments.docs.forEach(doc => {
+    batch.update(doc.ref, { status: 'cancelada' });
+  });
+
+  await batch.commit();
+  console.log(`Cancelled ${pendingAppointments.size} pending appointments.`);
+  return null;
+});
