@@ -4,7 +4,6 @@ import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:agend_app/widgets/custom_button.dart';
 import 'package:agend_app/widgets/custom_fab.dart';
-import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -43,7 +42,9 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
               children: [
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Nombre Completo'),
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre Completo',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -58,13 +59,17 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Email de Acceso'),
+                  decoration: const InputDecoration(
+                    labelText: 'Email de Acceso',
+                  ),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Contraseña Provisional'),
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña Provisional',
+                  ),
                   obscureText: true,
                 ),
               ],
@@ -110,24 +115,25 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
         final professionalUid = userCredential.user!.uid;
         await tempApp.delete();
 
-        final professionalDocRef =
-            await FirebaseFirestore.instance.collection('professionals').add({
-          'nombre': name,
-          'especialidad': specialty,
-          'salonId': widget.salonId,
-          'uid': professionalUid, // Vínculo con su cuenta de usuario
-        });
+        final professionalDocRef = await FirebaseFirestore.instance
+            .collection('professionals')
+            .add({
+              'nombre': name,
+              'especialidad': specialty,
+              'salonId': widget.salonId,
+              'uid': professionalUid, // Vínculo con su cuenta de usuario
+            });
 
         await FirebaseFirestore.instance
             .collection('users')
             .doc(professionalUid)
             .set({
-          'nombre': name,
-          'email': email,
-          'rol': 'professional', // NUEVO ROL
-          'salonId': widget.salonId,
-          'professionalId': professionalDocRef.id, // Vínculo inverso
-        });
+              'nombre': name,
+              'email': email,
+              'rol': 'professional', // NUEVO ROL
+              'salonId': widget.salonId,
+              'professionalId': professionalDocRef.id, // Vínculo inverso
+            });
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -182,7 +188,8 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
               return CustomCard(
                 icon: Icons.person,
                 title: professionalData['nombre'] ?? 'Sin nombre',
-                subtitle: professionalData['especialidad'] ?? 'Sin especialidad',
+                subtitle:
+                    professionalData['especialidad'] ?? 'Sin especialidad',
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

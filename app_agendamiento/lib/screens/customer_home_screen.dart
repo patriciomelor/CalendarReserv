@@ -22,9 +22,7 @@ class CustomerHomeScreen extends StatelessWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const SelectSalonScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const SelectSalonScreen()),
           );
         },
         label: const Text('Agendar Cita'),
@@ -55,7 +53,8 @@ class CustomerHomeScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()));
+                    child: Center(child: CircularProgressIndicator()),
+                  );
                 }
                 if (snapshot.hasError) {
                   return SliverFillRemaining(
@@ -69,11 +68,7 @@ class CustomerHomeScreen extends StatelessWidget {
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const SliverFillRemaining(
-                    child: Center(
-                      child: Text(
-                        'No tienes citas programadas.',
-                      ),
-                    ),
+                    child: Center(child: Text('No tienes citas programadas.')),
                   );
                 }
 
@@ -87,88 +82,103 @@ class CustomerHomeScreen extends StatelessWidget {
 
                 return SliverList(
                   delegate: SliverChildListDelegate([
-                    if (pendingAppointments.isNotEmpty)
-                      ...[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                          child: Text(
-                            'Citas Pendientes de Confirmación',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
+                    if (pendingAppointments.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                        child: Text(
+                          'Citas Pendientes de Confirmación',
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                        ...pendingAppointments.map((appointment) {
-                          final data = appointment.data() as Map<String, dynamic>;
-                          final startTime = (data['startTime'] as Timestamp).toDate();
-                          final formattedDate =
-                              DateFormat('d MMM yyyy', 'es_ES').format(startTime);
-                          final formattedTime = DateFormat('hh:mm a').format(startTime);
-                          final dayOfWeek =
-                              DateFormat('EEEE', 'es_ES').format(startTime);
+                      ),
+                      ...pendingAppointments.map((appointment) {
+                        final data = appointment.data() as Map<String, dynamic>;
+                        final startTime = (data['startTime'] as Timestamp)
+                            .toDate();
+                        final formattedDate = DateFormat(
+                          'd MMM yyyy',
+                          'es_ES',
+                        ).format(startTime);
+                        final formattedTime = DateFormat(
+                          'hh:mm a',
+                        ).format(startTime);
+                        final dayOfWeek = DateFormat(
+                          'EEEE',
+                          'es_ES',
+                        ).format(startTime);
 
-                          return CustomCard(
-                            title: '$dayOfWeek, $formattedDate',
-                            subtitle: 'A las $formattedTime',
-                            icon: Icons.calendar_today,
-                            trailing: const Text('Pendiente'),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AppointmentDetailsScreen(
-                                    appointment: appointment,
-                                  ),
+                        return CustomCard(
+                          title: '$dayOfWeek, $formattedDate',
+                          subtitle: 'A las $formattedTime',
+                          icon: Icons.calendar_today,
+                          trailing: const Text('Pendiente'),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AppointmentDetailsScreen(
+                                  appointment: appointment,
                                 ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      ],
-                    if (confirmedAppointments.isNotEmpty)
-                      ...[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                          child: Text(
-                            'Mis Próximas Citas',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ],
+                    if (confirmedAppointments.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                        child: Text(
+                          'Mis Próximas Citas',
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                        ...confirmedAppointments.map((appointment) {
-                          final data = appointment.data() as Map<String, dynamic>;
-                          final startTime = (data['startTime'] as Timestamp).toDate();
-                          final formattedDate =
-                              DateFormat('d MMM yyyy', 'es_ES').format(startTime);
-                          final formattedTime = DateFormat('hh:mm a').format(startTime);
-                          final dayOfWeek =
-                              DateFormat('EEEE', 'es_ES').format(startTime);
+                      ),
+                      ...confirmedAppointments.map((appointment) {
+                        final data = appointment.data() as Map<String, dynamic>;
+                        final startTime = (data['startTime'] as Timestamp)
+                            .toDate();
+                        final formattedDate = DateFormat(
+                          'd MMM yyyy',
+                          'es_ES',
+                        ).format(startTime);
+                        final formattedTime = DateFormat(
+                          'hh:mm a',
+                        ).format(startTime);
+                        final dayOfWeek = DateFormat(
+                          'EEEE',
+                          'es_ES',
+                        ).format(startTime);
 
-                          return CustomCard(
-                            title: '$dayOfWeek, $formattedDate',
-                            subtitle: 'A las $formattedTime',
-                            icon: Icons.calendar_today,
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (_) =>
-                                  _cancelAppointment(context, appointment.id),
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'cancel',
-                                  child: Text('Cancelar Cita'),
-                                ),
-                              ],
-                              icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+                        return CustomCard(
+                          title: '$dayOfWeek, $formattedDate',
+                          subtitle: 'A las $formattedTime',
+                          icon: Icons.calendar_today,
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (_) =>
+                                _cancelAppointment(context, appointment.id),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'cancel',
+                                child: Text('Cancelar Cita'),
+                              ),
+                            ],
+                            icon: Icon(
+                              Icons.more_vert,
+                              color: Colors.grey[600],
                             ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AppointmentDetailsScreen(
-                                    appointment: appointment,
-                                  ),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AppointmentDetailsScreen(
+                                  appointment: appointment,
                                 ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      ],
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ],
                   ]),
                 );
               },
@@ -180,7 +190,9 @@ class CustomerHomeScreen extends StatelessWidget {
   }
 
   Future<void> _cancelAppointment(
-      BuildContext context, String appointmentId) async {
+    BuildContext context,
+    String appointmentId,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

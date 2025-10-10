@@ -85,14 +85,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   CustomTextField(
                     controller: _emailController,
                     label: 'Correo Electrónico',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
+                    icon: Icons.email_outlined,
                   ),
                   const SizedBox(height: 20),
                   CustomTextField(
                     controller: _passwordController,
                     label: 'Contraseña',
-                    prefixIconData: Icons.lock_outline,
+                    icon: Icons.lock_outline,
                     obscureText: true,
                   ),
                   const SizedBox(height: 20),

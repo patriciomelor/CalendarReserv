@@ -59,7 +59,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: Text('Mi Agenda (ID: $professionalId)'),
+            title: Text('Mi Agenda'),
             centerTitle: false,
             actions: [
               IconButton(
@@ -88,9 +88,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: _buildCalendar(theme),
-          ),
+          SliverToBoxAdapter(child: _buildCalendar(theme)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
@@ -141,12 +139,16 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
   }
 
   Widget _buildAppointmentList(
-      String professionalId, DateTime startOfDay, DateTime endOfDay, ThemeData theme) {
+    String professionalId,
+    DateTime startOfDay,
+    DateTime endOfDay,
+    ThemeData theme,
+  ) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('appointments')
           .where('professionalId', isEqualTo: professionalId)
-          .where('status', whereIn: ['confirmada', 'pendiente'])
+          .where('status', whereIn: ['confirmada', 'pendiente', 'cancelada'])
           .where(
             'startTime',
             isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
@@ -156,7 +158,19 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+          return const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return SliverFillRemaining(
+            child: Center(
+              child: Text(
+                'Error al cargar las citas: ${snapshot.error}',
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return SliverFillRemaining(
@@ -172,36 +186,57 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final appointmentDoc = appointments[index];
-                final appointment = appointmentDoc.data() as Map<String, dynamic>;
-                final startTime = (appointment['startTime'] as Timestamp).toDate();
-                final status = appointment['status'];
-                return CustomCard(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final appointmentDoc = appointments[index];
+              final appointment = appointmentDoc.data() as Map<String, dynamic>;
+              final startTime = (appointment['startTime'] as Timestamp)
+                  .toDate();
+              final status = appointment['status'] ?? 'pendiente';
+              final isCancelled = status == 'cancelada';
+
+              return Opacity(
+                opacity: isCancelled ? 0.6 : 1.0,
+                child: CustomCard(
                   title: appointment['customerName'] ?? 'Cliente',
-                  subtitle: appointment['customerEmail'] ?? 'No especificado',
-                  icon: Icons.person,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  subtitle:
+                      '${appointment['customerEmail'] ?? 'No especificado'}\nServicio: ${appointment['serviceName'] ?? 'No especificado'}',
+                  icon: Icons.person_outline,
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(status),
-                      PopupMenuButton<String>(
-                        onSelected: (_) => _cancelAppointment(context, appointmentDoc),
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'cancel',
-                            child: Text('Cancelar Cita'),
+                      Text(
+                        DateFormat('HH:mm').format(startTime),
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isCancelled
+                              ? Colors.grey
+                              : status == 'confirmada'
+                              ? Colors.green
+                              : Colors.orange,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          status,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                        icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+                        ),
                       ),
                     ],
                   ),
-                );
-              },
-              childCount: appointments.length,
-            ),
+                  isCancelled: isCancelled,
+                ),
+              );
+            }, childCount: appointments.length),
           ),
         );
       },
@@ -209,13 +244,16 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
   }
 
   Future<void> _cancelAppointment(
-      BuildContext context, DocumentSnapshot appointmentDoc) async {
+    BuildContext context,
+    DocumentSnapshot appointmentDoc,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar Cancelación'),
         content: const Text(
-            '¿Estás seguro de que quieres cancelar esta cita? Se notificará al cliente.'),
+          '¿Estás seguro de que quieres cancelar esta cita? Se notificará al cliente.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

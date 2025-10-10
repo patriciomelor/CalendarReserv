@@ -10,8 +10,8 @@ class CustomFAB extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: onPressed,
-      child: Icon(icon, size: 32),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Icon(icon, size: 32),
     );
   }
 }

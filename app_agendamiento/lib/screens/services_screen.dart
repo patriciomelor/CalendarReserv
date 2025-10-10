@@ -4,7 +4,6 @@ import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:agend_app/widgets/custom_button.dart';
 import 'package:agend_app/widgets/custom_fab.dart';
-import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -38,12 +37,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
             children: [
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nombre del Servicio'),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del Servicio',
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _priceController,
-                decoration: const InputDecoration(labelText: 'Precio (ej: 10000)'),
+                decoration: const InputDecoration(
+                  labelText: 'Precio (ej: 10000)',
+                ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -53,7 +56,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
               TextField(
                 controller: _durationController,
                 decoration: const InputDecoration(
-                    labelText: 'Duración (en minutos, ej: 30)'),
+                  labelText: 'Duración (en minutos, ej: 30)',
+                ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,

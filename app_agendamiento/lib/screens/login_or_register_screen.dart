@@ -28,8 +28,8 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
       // Autentica al usuario como anónimo
       await FirebaseAuth.instance.signInAnonymously();
       // Navega a la pantalla de selección de salón
-      Navigator.pushReplacement(
-        // Usamos pushReplacement para que no pueda volver aquí
+      Navigator.push(
+        // Cambiado a push para permitir volver a la pantalla de login
         context,
         MaterialPageRoute(builder: (context) => const SelectSalonScreen()),
       );

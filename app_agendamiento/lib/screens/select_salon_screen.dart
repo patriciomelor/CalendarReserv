@@ -3,7 +3,6 @@
 import 'package:agend_app/screens/select_service_screen.dart';
 import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
-import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -22,9 +21,7 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Elige un Salón',
-      ),
+      appBar: const CustomAppBar(title: 'Elige un Salón'),
       body: Column(
         children: [
           // Barra de Búsqueda
@@ -45,7 +42,9 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
           // Lista de Salones
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('salones').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('salones')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -69,7 +68,8 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
                 final filteredSalons = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final name = data['nombre']?.toString().toLowerCase() ?? '';
-                  final address = data['direccion']?.toString().toLowerCase() ?? '';
+                  final address =
+                      data['direccion']?.toString().toLowerCase() ?? '';
                   final query = _searchQuery.toLowerCase();
                   return name.contains(query) || address.contains(query);
                 }).toList();
@@ -90,8 +90,8 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
                     final salonData = salon.data() as Map<String, dynamic>;
 
                     return CustomCard(
-                      title: salonData['name'] ?? 'Salón sin Nombre',
-                      subtitle: salonData['address'] ?? 'Sin Dirección',
+                      title: salonData['nombre'] ?? 'Salón sin Nombre',
+                      subtitle: salonData['direccion'] ?? 'Sin Dirección',
                       icon: Icons.store,
                       onTap: () {
                         Navigator.push(
@@ -113,8 +113,11 @@ class _SelectSalonScreenState extends State<SelectSalonScreen> {
     );
   }
 
-  Widget _buildFeedbackCard(
-      {required IconData icon, required String message, required Color color}) {
+  Widget _buildFeedbackCard({
+    required IconData icon,
+    required String message,
+    required Color color,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),

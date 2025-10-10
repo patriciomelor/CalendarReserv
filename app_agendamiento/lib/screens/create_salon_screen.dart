@@ -3,14 +3,15 @@
 import 'package:agend_app/services/notification_service.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:agend_app/widgets/custom_button.dart';
-import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class CreateSalonScreen extends StatefulWidget {
-  const CreateSalonScreen({super.key});
+  final DocumentSnapshot? salon;
+
+  const CreateSalonScreen({super.key, this.salon});
 
   @override
   State<CreateSalonScreen> createState() => _CreateSalonScreenState();
@@ -19,6 +20,7 @@ class CreateSalonScreen extends StatefulWidget {
 class _CreateSalonScreenState extends State<CreateSalonScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  late bool _isEditing;
 
   // Controladores para los datos del salón
   final _salonNameController = TextEditingController();
@@ -31,6 +33,32 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
   final _adminPasswordController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _isEditing = widget.salon != null;
+
+    if (_isEditing) {
+      final data = widget.salon!.data() as Map<String, dynamic>;
+      _salonNameController.text = data['nombre'] ?? '';
+      _salonAddressController.text = data['direccion'] ?? '';
+      _salonPhoneController.text = data['telefono'] ?? '';
+
+      // Cargamos los datos del admin, pero los campos de auth no serán editables
+      _loadAdminData(data['adminUid']);
+    }
+  }
+
+  Future<void> _loadAdminData(String? adminUid) async {
+    if (adminUid == null) return;
+    final adminDoc = await FirebaseFirestore.instance.collection('users').doc(adminUid).get();
+    if (adminDoc.exists) {
+      final adminData = adminDoc.data()!;
+      _adminNameController.text = adminData['nombre'] ?? '';
+      _adminEmailController.text = adminData['email'] ?? '';
+    }
+  }
+
+  @override
   void dispose() {
     _salonNameController.dispose();
     _salonAddressController.dispose();
@@ -41,54 +69,77 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
     super.dispose();
   }
 
-  Future<void> _createSalonAndAdmin() async {
+  Future<void> _saveSalon() async {
     if (!_formKey.currentState!.validate()) {
-      return; // Si el formulario no es válido, no hacemos nada.
+      return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // Para crear un usuario, necesitamos una instancia secundaria de Firebase
-      // para no desloguear al Súper Admin actual.
-      final tempApp = await Firebase.initializeApp(
-        name: 'tempAdminCreation',
-        options: Firebase.app().options,
-      );
-      final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+      if (_isEditing) {
+        // Lógica para actualizar un salón existente
+        await FirebaseFirestore.instance.collection('salones').doc(widget.salon!.id).update({
+          'nombre': _salonNameController.text.trim(),
+          'direccion': _salonAddressController.text.trim(),
+          'telefono': _salonPhoneController.text.trim(),
+        });
 
-      // 1. Crear el nuevo usuario administrador en Firebase Auth
-      UserCredential userCredential = await tempAuth.createUserWithEmailAndPassword(
-        email: _adminEmailController.text.trim(),
-        password: _adminPasswordController.text.trim(),
-      );
-      final adminUid = userCredential.user!.uid;
-      await tempApp.delete(); // Cerramos la instancia temporal
+        // Actualizar el nombre del admin si ha cambiado
+        final adminUid = (widget.salon!.data() as Map<String, dynamic>)['adminUid'];
+        if (adminUid != null) {
+          await FirebaseFirestore.instance.collection('users').doc(adminUid).update({
+            'nombre': _adminNameController.text.trim(),
+          });
+        }
 
-      // 2. Crear el documento del salón en Firestore
-      final salonDocRef = await FirebaseFirestore.instance.collection('salones').add({
-        'nombre': _salonNameController.text.trim(),
-        'direccion': _salonAddressController.text.trim(),
-        'telefono': _salonPhoneController.text.trim(),
-        'adminUid': adminUid, // Guardamos referencia al admin
-        // Valores por defecto para la configuración del salón
-        'openingTime': '09:00',
-        'closingTime': '18:00',
-        'workDays': [1, 2, 3, 4, 5], // Lunes a Viernes
-      });
+      } else {
+        // Lógica para crear un nuevo salón y admin
+        final tempApp = await Firebase.initializeApp(
+          name: 'tempAdminCreation',
+          options: Firebase.app().options,
+        );
+        final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
 
-      // 3. Crear el documento del usuario admin en Firestore, vinculándolo al salón
-      await FirebaseFirestore.instance.collection('users').doc(adminUid).set({
-        'nombre': _adminNameController.text.trim(),
-        'email': _adminEmailController.text.trim(),
-        'rol': 'admin',
-        'salonId': salonDocRef.id, // Vínculo hacia el salón que administra
-      });
+        UserCredential userCredential = await tempAuth.createUserWithEmailAndPassword(
+          email: _adminEmailController.text.trim(),
+          password: _adminPasswordController.text.trim(),
+        );
+        final adminUid = userCredential.user!.uid;
+        await tempApp.delete();
+
+        final salonDocRef = await FirebaseFirestore.instance.collection('salones').add({
+          'nombre': _salonNameController.text.trim(),
+          'direccion': _salonAddressController.text.trim(),
+          'telefono': _salonPhoneController.text.trim(),
+          'adminUid': adminUid,
+          'openingTime': '09:00',
+          'closingTime': '18:00',
+          'workDays': [1, 2, 3, 4, 5],
+        });
+
+        await FirebaseFirestore.instance.collection('users').doc(adminUid).set({
+          'nombre': _adminNameController.text.trim(),
+          'email': _adminEmailController.text.trim(),
+          'rol': 'admin',
+          'salonId': salonDocRef.id,
+        });
+
+        await NotificationService.sendEmail(
+          to: _adminEmailController.text.trim(),
+          subject: '¡Bienvenido! Tu cuenta de administrador ha sido creada.',
+          htmlBody: '''
+            <h1>¡Hola ${_adminNameController.text.trim()}!</h1>
+            <p>Tu cuenta para administrar el salón "${_salonNameController.text.trim()}" ha sido creada con éxito.</p>
+            <p>Puedes iniciar sesión con: <strong>${_adminEmailController.text.trim()}</strong></p>
+          ''',
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Salón y administrador creados con éxito.'),
+          SnackBar(
+            content: Text('Salón ${ _isEditing ? 'actualizado' : 'creado' } con éxito.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -110,21 +161,12 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
         setState(() => _isLoading = false);
       }
     }
-    await NotificationService.sendEmail(
-      to: _adminEmailController.text.trim(),
-      subject: '¡Bienvenido! Tu cuenta de administrador ha sido creada.',
-      htmlBody: '''
-    <h1>¡Hola ${_adminNameController.text.trim()}!</h1>
-    <p>Tu cuenta para administrar el salón "${_salonNameController.text.trim()}" ha sido creada con éxito.</p>
-    <p>Puedes iniciar sesión con: <strong>${_adminEmailController.text.trim()}</strong></p>
-  ''',
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Crear Nuevo Cliente'),
+      appBar: CustomAppBar(title: _isEditing ? 'Editar Salón' : 'Crear Nuevo Salón'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -170,24 +212,28 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
                 controller: _adminEmailController,
                 decoration: const InputDecoration(labelText: 'Email de Acceso'),
                 keyboardType: TextInputType.emailAddress,
+                enabled: !_isEditing, // No se puede editar el email
+                style: TextStyle(color: _isEditing ? Colors.grey : null),
                 validator: (value) => value!.isEmpty || !value.contains('@')
                     ? 'Email inválido'
                     : null,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _adminPasswordController,
-                decoration: const InputDecoration(labelText: 'Contraseña Provisional'),
-                obscureText: true,
-                validator: (value) =>
-                    (value?.length ?? 0) < 6 ? 'Mínimo 6 caracteres' : null,
-              ),
+              if (!_isEditing)
+                const SizedBox(height: 16),
+              if (!_isEditing)
+                TextFormField(
+                  controller: _adminPasswordController,
+                  decoration: const InputDecoration(labelText: 'Contraseña Provisional'),
+                  obscureText: true,
+                  validator: (value) =>
+                      !_isEditing && (value?.length ?? 0) < 6 ? 'Mínimo 6 caracteres' : null,
+                ),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
                 child: CustomButton(
-                  text: 'Crear Cliente',
-                  onPressed: _isLoading ? () {} : _createSalonAndAdmin,
+                  text: _isEditing ? 'Guardar Cambios' : 'Crear Salón',
+                  onPressed: _isLoading ? () {} : _saveSalon,
                 ),
               ),
             ],

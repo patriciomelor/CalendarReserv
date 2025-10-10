@@ -1,6 +1,5 @@
 // lib/screens/super_admin_dashboard_screen.dart
 
-import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:agend_app/widgets/custom_fab.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,12 +12,66 @@ class SuperAdminDashboardScreen extends StatelessWidget {
 
   const SuperAdminDashboardScreen({super.key, required this.userData});
 
-  // En el futuro, aquí iría la lógica para crear un nuevo salón
   void _addSalon(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreateSalonScreen()),
     );
+  }
+
+  void _editSalon(BuildContext context, DocumentSnapshot salon) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CreateSalonScreen(salon: salon)),
+    );
+  }
+
+  Future<void> _deleteSalon(BuildContext context, String salonId) async {
+    final bool? confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Eliminación'),
+        content: const Text(
+          '¿Estás seguro de que quieres eliminar este salón? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('salones')
+            .doc(salonId)
+            .delete();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Salón eliminado con éxito.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al eliminar el salón: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -75,11 +128,31 @@ class SuperAdminDashboardScreen extends StatelessWidget {
                     final salon = salons[index];
                     final data = salon.data() as Map<String, dynamic>;
 
-                    return CustomCard(
-                      icon: Icons.storefront,
-                      title: data['nombre'] ?? 'Sin Nombre',
-                      subtitle: 
-                          'Dirección: ${data['direccion'] ?? 'No especificada'}',
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: ListTile(
+                        leading: const Icon(Icons.storefront, size: 40),
+                        title: Text(data['nombre'] ?? 'Sin Nombre'),
+                        subtitle: Text(data['direccion'] ?? 'No especificada'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _editSalon(context, salon),
+                              tooltip: 'Editar Salón',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteSalon(context, salon.id),
+                              tooltip: 'Eliminar Salón',
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 );

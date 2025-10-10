@@ -2,7 +2,6 @@
 
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:agend_app/widgets/custom_button.dart';
-import 'package:agend_app/widgets/custom_text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -59,8 +58,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
         _nameController.text = data['nombre'] ?? '';
         _openingTimeController.text = data['openingTime'] ?? '09:00';
         _closingTimeController.text = data['closingTime'] ?? '18:00';
-        _slotsPerTimeController.text =
-            (data['slotsPerTime'] ?? 1).toString(); // Cargar dato
+        _slotsPerTimeController.text = (data['slotsPerTime'] ?? 1)
+            .toString(); // Cargar dato
 
         final workDaysFromDb = List<int>.from(
           data['workDays'] ?? [1, 2, 3, 4, 5],
@@ -91,13 +90,13 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
           .collection('salones')
           .doc(widget.salonId)
           .update({
-        'nombre': _nameController.text.trim(),
-        'openingTime': _openingTimeController.text.trim(),
-        'closingTime': _closingTimeController.text.trim(),
-        'workDays': selectedDays,
-        'slotsPerTime':
-            int.tryParse(_slotsPerTimeController.text.trim()) ?? 1,
-      });
+            'nombre': _nameController.text.trim(),
+            'openingTime': _openingTimeController.text.trim(),
+            'closingTime': _closingTimeController.text.trim(),
+            'workDays': selectedDays,
+            'slotsPerTime':
+                int.tryParse(_slotsPerTimeController.text.trim()) ?? 1,
+          });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +125,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   children: [
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Nombre del Salón'),
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre del Salón',
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Campo requerido';
@@ -137,7 +138,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _openingTimeController,
-                      decoration: const InputDecoration(labelText: 'Hora de Apertura (HH:mm)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Hora de Apertura (HH:mm)',
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Campo requerido';
@@ -151,7 +154,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _closingTimeController,
-                      decoration: const InputDecoration(labelText: 'Hora de Cierre (HH:mm)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Hora de Cierre (HH:mm)',
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Campo requerido';
@@ -165,7 +170,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _slotsPerTimeController,
-                      decoration: const InputDecoration(labelText: 'Cupos por Horario'),
+                      decoration: const InputDecoration(
+                        labelText: 'Cupos por Horario',
+                      ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
