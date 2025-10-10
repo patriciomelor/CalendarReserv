@@ -1,0 +1,159 @@
+// lib/screens/services_screen.dart
+
+import 'package:agend_app/widgets/CustomCard.dart';
+import 'package:agend_app/widgets/custom_appbar.dart';
+import 'package:agend_app/widgets/custom_button.dart';
+import 'package:agend_app/widgets/custom_fab.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+class ServicesScreen extends StatefulWidget {
+  final String salonId;
+
+  const ServicesScreen({super.key, required this.salonId});
+
+  @override
+  State<ServicesScreen> createState() => _ServicesScreenState();
+}
+
+class _ServicesScreenState extends State<ServicesScreen> {
+  final _nameController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _durationController = TextEditingController();
+
+  void _showAddServiceDialog() {
+    _nameController.clear();
+    _priceController.clear();
+    _durationController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Añadir Nuevo Servicio'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del Servicio',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _priceController,
+                decoration: const InputDecoration(
+                  labelText: 'Precio (ej: 10000)',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ], // Solo permite números
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _durationController,
+                decoration: const InputDecoration(
+                  labelText: 'Duración (en minutos, ej: 30)',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ], // Solo permite números
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            CustomButton(
+              text: 'Añadir',
+              onPressed: () {
+                _addService();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addService() async {
+    final name = _nameController.text.trim();
+    // Estas líneas convierten el texto de los campos a números (int)
+    final price = int.tryParse(_priceController.text.trim());
+    final duration = int.tryParse(_durationController.text.trim());
+
+    if (name.isNotEmpty && price != null && duration != null) {
+      await FirebaseFirestore.instance.collection('services').add({
+        'nombre': name,
+        'precio': price, // Se guarda como número
+        'duracion': duration, // Se guarda como número
+        'salonId': widget.salonId,
+      });
+    }
+  }
+
+  Future<void> _deleteService(String docId) async {
+    await FirebaseFirestore.instance.collection('services').doc(docId).delete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const CustomAppBar(title: 'Gestionar Servicios'),
+      floatingActionButton: CustomFAB(
+        onPressed: _showAddServiceDialog,
+        icon: Icons.add,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('services')
+            .where('salonId', isEqualTo: widget.salonId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const Center(child: Text('Ocurrió un error.'));
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No hay servicios registrados.\n¡Añade uno con el botón +!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18),
+              ),
+            );
+          }
+
+          final services = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: services.length,
+            itemBuilder: (context, index) {
+              final service = services[index];
+              final serviceData = service.data() as Map<String, dynamic>;
+
+              final price = serviceData['precio'] ?? 0;
+              final duration = serviceData['duracion'] ?? 0;
+
+              return CustomCard(
+                icon: Icons.cut,
+                title: serviceData['nombre'] ?? 'Sin nombre',
+                subtitle: 'Precio: \$price - Duración: $duration min',
+                onDelete: () => _deleteService(service.id),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
