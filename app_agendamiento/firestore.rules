@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    // Verifica si el usuario que hace la petición es un Super Admin.
+    function isSuperAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.rol == 'super_admin';
+    }
+
+    // Verifica si el usuario es el Admin del salón especificado.
+    function isSalonAdmin(salonId) {
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return user.rol == 'admin' && user.salonId == salonId;
+    }
+
+    // Verifica si el usuario es un profesional del salón especificado.
+    function isSalonProfessional(salonId) {
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return user.rol == 'professional' && user.salonId == salonId;
+    }
+
+    // --- Collection Rules ---
+
+    // Reglas para la colección 'salones'
+    match /salones/{salonId} {
+      allow read: if request.auth != null;
+      allow create: if isSuperAdmin();
+      allow update, delete: if isSalonAdmin(salonId) || isSuperAdmin();
+    }
+
+    // Reglas para la colección 'users'
+    match /users/{userId} {
+      // Cualquiera autenticado puede leer perfiles (para mostrar nombres, etc.)
+      allow read: if request.auth != null;
+      // La creación de usuarios está permitida por un super_admin o un admin de salón.
+      allow create: if isSuperAdmin() || isSalonAdmin(request.resource.data.salonId);
+      // Solo el propio usuario puede actualizar sus datos.
+      allow update: if request.auth.uid == userId;
+      // La eliminación de usuarios se deja intencionadamente restrictiva.
+      allow delete: if isSuperAdmin();
+    }
+
+    // Reglas para la colección 'professionals'
+    match /professionals/{professionalId} {
+      allow read: if request.auth != null;
+      // Solo el admin del salón puede gestionar los profesionales de su salón.
+      allow create, update, delete: if isSalonAdmin(request.resource.data.salonId);
+    }
+
+    // Reglas para la colección 'services'
+    match /services/{serviceId} {
+      allow read: if request.auth != null;
+      // Solo el admin del salón puede gestionar los servicios de su salón.
+      allow create, update, delete: if isSalonAdmin(request.resource.data.salonId);
+    }
+
+    // Reglas para la colección 'appointments' (citas)
+    match /appointments/{appointmentId} {
+      // Leer: el cliente, el profesional de la cita, o el admin del salón.
+      allow read: if request.auth.uid == resource.data.customerId ||
+                   isSalonProfessional(resource.data.salonId) && request.auth.uid == resource.data.professionalId ||
+                   isSalonAdmin(resource.data.salonId);
+      // Crear: cualquier usuario autenticado puede solicitar una cita.
+      allow create: if request.auth != null;
+      // Actualizar: el cliente (para cancelar) o el admin del salón.
+      allow update: if request.auth.uid == resource.data.customerId || isSalonAdmin(resource.data.salonId);
+      // Borrar: restringido, se prefiere cambiar el estado a 'cancelada'.
+      allow delete: if isSalonAdmin(resource.data.salonId);
+    }
+  }
+}
