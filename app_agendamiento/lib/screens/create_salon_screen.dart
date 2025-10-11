@@ -1,5 +1,6 @@
 // lib/screens/create_salon_screen.dart
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:agend_app/services/notification_service.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:agend_app/widgets/custom_button.dart';
@@ -21,6 +22,7 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   late bool _isEditing;
+  String _originalAdminEmail = '';
 
   // Controladores para los datos del salón
   final _salonNameController = TextEditingController();
@@ -43,7 +45,6 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
       _salonAddressController.text = data['direccion'] ?? '';
       _salonPhoneController.text = data['telefono'] ?? '';
 
-      // Cargamos los datos del admin, pero los campos de auth no serán editables
       _loadAdminData(data['adminUid']);
     }
   }
@@ -55,6 +56,7 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
       final adminData = adminDoc.data()!;
       _adminNameController.text = adminData['nombre'] ?? '';
       _adminEmailController.text = adminData['email'] ?? '';
+      _originalAdminEmail = adminData['email'] ?? ''; // Guardar email original
     }
   }
 
@@ -78,24 +80,38 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
 
     try {
       if (_isEditing) {
-        // Lógica para actualizar un salón existente
+        // --- Lógica de actualización de Email con Cloud Function ---
+        final newEmail = _adminEmailController.text.trim();
+        if (newEmail != _originalAdminEmail) {
+          final adminUid = (widget.salon!.data() as Map<String, dynamic>)['adminUid'];
+          if (adminUid != null) {
+            final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
+            final callable = functions.httpsCallable('updateUserEmail');
+            await callable.call({
+              'uid': adminUid,
+              'newEmail': newEmail,
+            });
+            // El email en Firestore es actualizado por la Cloud Function
+          }
+        }
+
+        // --- Actualizar el resto de los datos ---
         await FirebaseFirestore.instance.collection('salones').doc(widget.salon!.id).update({
           'nombre': _salonNameController.text.trim(),
           'direccion': _salonAddressController.text.trim(),
           'telefono': _salonPhoneController.text.trim(),
         });
 
-        // Actualizar el nombre y email del admin si han cambiado
         final adminUid = (widget.salon!.data() as Map<String, dynamic>)['adminUid'];
         if (adminUid != null) {
           await FirebaseFirestore.instance.collection('users').doc(adminUid).update({
             'nombre': _adminNameController.text.trim(),
-            'email': _adminEmailController.text.trim(),
+            // Ya no actualizamos el email aquí, lo hace la función
           });
         }
 
       } else {
-        // Lógica para crear un nuevo salón y admin
+        // Lógica para crear un nuevo salón y admin (sin cambios)
         final tempApp = await Firebase.initializeApp(
           name: 'tempAdminCreation',
           options: Firebase.app().options,
@@ -146,10 +162,10 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
         );
         Navigator.of(context).pop();
       }
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseFunctionsException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error de autenticación: ${e.message}')),
+          SnackBar(content: Text('Error al actualizar email: ${e.message}')),
         );
       }
     } catch (e) {
@@ -213,8 +229,7 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
                 controller: _adminEmailController,
                 decoration: const InputDecoration(labelText: 'Email de Acceso'),
                 keyboardType: TextInputType.emailAddress,
-                enabled: true, // No se puede editar el email
-                style: TextStyle(color: _isEditing ? Colors.grey : null),
+                enabled: true, // Campo de email siempre habilitado
                 validator: (value) => value!.isEmpty || !value.contains('@')
                     ? 'Email inválido'
                     : null,
