@@ -165,4 +165,63 @@ exports.cancelPendingAppointments = functions.pubsub.schedule('every 60 minutes'
   await batch.commit();
   console.log(`Cancelled ${pendingAppointments.size} pending appointments.`);
   return null;
+});exports.updateUserEmail = functions.https.onCall(async (data, context) => {
+  // 1. Check if the caller is authenticated.
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The function must be called while authenticated.",
+    );
+  }
+
+  // 2. Check for the required arguments.
+  const { uid, newEmail } = data;
+  if (!uid || !newEmail) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "The function must be called with 'uid' and 'newEmail' arguments.",
+    );
+  }
+
+  // 3. Check if the caller is a 'super_admin'.
+  try {
+    const callerDoc = await admin.firestore().collection("users").doc(context.auth.uid).get();
+    if (!callerDoc.exists || callerDoc.data().rol !== "super_admin") {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only super admins can perform this action.",
+      );
+    }
+  } catch (error) {
+     console.error("Error checking admin status:", error);
+     throw new functions.https.HttpsError(
+        "internal",
+        "An error occurred while verifying permissions.",
+      );
+  }
+
+
+  // 4. Update the user in Firebase Auth and Firestore.
+  try {
+    // Update Firebase Authentication email
+    await admin.auth().updateUser(uid, { email: newEmail });
+
+    // Update the email in the Firestore 'users' document
+    await admin.firestore().collection("users").doc(uid).update({ email: newEmail });
+
+    return { success: true, message: "User email updated successfully in Auth and Firestore." };
+  } catch (error) {
+    console.error("Error updating user:", error);
+    // Provide a more specific error to the client if possible
+    if (error.code === 'auth/email-already-exists') {
+       throw new functions.https.HttpsError(
+        "already-exists",
+        "The new email address is already in use by another account.",
+      );
+    }
+    throw new functions.https.HttpsError(
+      "internal",
+      "An internal error occurred while updating the user.",
+    );
+  }
 });

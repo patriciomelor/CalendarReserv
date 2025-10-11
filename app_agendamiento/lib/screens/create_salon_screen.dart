@@ -85,11 +85,12 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
           'telefono': _salonPhoneController.text.trim(),
         });
 
-        // Actualizar el nombre del admin si ha cambiado
+        // Actualizar el nombre y email del admin si han cambiado
         final adminUid = (widget.salon!.data() as Map<String, dynamic>)['adminUid'];
         if (adminUid != null) {
           await FirebaseFirestore.instance.collection('users').doc(adminUid).update({
             'nombre': _adminNameController.text.trim(),
+            'email': _adminEmailController.text.trim(),
           });
         }
 
@@ -212,7 +213,7 @@ class _CreateSalonScreenState extends State<CreateSalonScreen> {
                 controller: _adminEmailController,
                 decoration: const InputDecoration(labelText: 'Email de Acceso'),
                 keyboardType: TextInputType.emailAddress,
-                enabled: !_isEditing, // No se puede editar el email
+                enabled: true, // No se puede editar el email
                 style: TextStyle(color: _isEditing ? Colors.grey : null),
                 validator: (value) => value!.isEmpty || !value.contains('@')
                     ? 'Email inválido'
