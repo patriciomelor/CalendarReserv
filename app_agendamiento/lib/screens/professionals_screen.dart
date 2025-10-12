@@ -8,7 +8,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:agend_app/config.dart';
 
 class ProfessionalsScreen extends StatefulWidget {
   final String salonId;
@@ -115,25 +117,24 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
         final professionalUid = userCredential.user!.uid;
         await tempApp.delete();
 
-        final professionalDocRef = await FirebaseFirestore.instance
-            .collection('professionals')
-            .add({
-              'nombre': name,
-              'especialidad': specialty,
-              'salonId': widget.salonId,
-              'uid': professionalUid, // Vínculo con su cuenta de usuario
-            });
+        final professionalDocRef =
+            await FirebaseFirestore.instance.collection('professionals').add({
+          'nombre': name,
+          'especialidad': specialty,
+          'salonId': widget.salonId,
+          'uid': professionalUid, // Vínculo con su cuenta de usuario
+        });
 
         await FirebaseFirestore.instance
             .collection('users')
             .doc(professionalUid)
             .set({
-              'nombre': name,
-              'email': email,
-              'rol': 'professional', // NUEVO ROL
-              'salonId': widget.salonId,
-              'professionalId': professionalDocRef.id, // Vínculo inverso
-            });
+          'nombre': name,
+          'email': email,
+          'rol': 'professional', // NUEVO ROL
+          'salonId': widget.salonId,
+          'professionalId': professionalDocRef.id, // Vínculo inverso
+        });
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

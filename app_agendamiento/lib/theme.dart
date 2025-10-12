@@ -16,13 +16,13 @@ final ThemeData appTheme = ThemeData(
     ),
     centerTitle: true,
   ),
-  floatingActionButtonTheme: FloatingActionButtonThemeData(
+  floatingActionButtonTheme: const FloatingActionButtonThemeData(
     backgroundColor: Colors.teal,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(12)),
     ),
   ),
-  cardTheme: CardThemeData(
+  cardTheme: const CardThemeData(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(16)),
     ),

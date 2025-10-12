@@ -39,7 +39,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (context) => LoginOrRegisterScreen(),
+                      builder: (context) => const LoginOrRegisterScreen(),
                     ),
                     (route) => false,
                   );

@@ -122,7 +122,7 @@ class _SalonAgendaScreenState extends State<SalonAgendaScreen> {
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
     return Scaffold(
-      appBar: CustomAppBar(title: 'Agenda del Salón'),
+      appBar: const CustomAppBar(title: 'Agenda del Salón'),
       body: Column(
         children: [
           TableCalendar(

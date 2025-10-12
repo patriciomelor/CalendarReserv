@@ -62,6 +62,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     });
 
     try {
+      // Obtener los datos del profesional y del salón
+      final professionalData = widget.professional.data() as Map<String, dynamic>?;
       final salonDoc = await FirebaseFirestore.instance
           .collection('salones')
           .doc(widget.salonId)
@@ -69,18 +71,59 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
       if (!salonDoc.exists) return;
 
       final salonData = salonDoc.data()!;
+
+      // Determinar el horario a usar: el del profesional si existe, si no, el del salón
+      final professionalSchedule = professionalData?['horario'] as Map<String, dynamic>?;
+      
+      String? openingTimeString;
+      String? closingTimeString;
+      List<int>? workDays;
+
+      if (professionalSchedule != null && 
+          professionalSchedule['openingTime'] != null &&
+          professionalSchedule['closingTime'] != null &&
+          professionalSchedule['workDays'] != null) {
+        openingTimeString = professionalSchedule['openingTime'] as String?;
+        closingTimeString = professionalSchedule['closingTime'] as String?;
+        workDays = List<int>.from(professionalSchedule['workDays']);
+      } else {
+        openingTimeString = salonData['openingTime'] as String?;
+        closingTimeString = salonData['closingTime'] as String?;
+        workDays = salonData['workDays'] != null ? List<int>.from(salonData['workDays']) : null;
+      }
+
+      // --- INICIO: Lógica de parseo robusta ---
+      if (openingTimeString == null || closingTimeString == null || workDays == null) {
+        print('Error: El horario (openingTime, closingTime, workDays) no está completamente definido para el profesional ni para el salón.');
+        setState(() => _isLoadingSlots = false);
+        return;
+      }
+
+      final openingTimeParts = openingTimeString.split(':');
+      final closingTimeParts = closingTimeString.split(':');
+
+      if (openingTimeParts.length != 2 || closingTimeParts.length != 2) {
+        print('Error: El formato de openingTime o closingTime es incorrecto. Debe ser "HH:mm". Valor recibido: $openingTimeString, $closingTimeString');
+        setState(() => _isLoadingSlots = false);
+        return;
+      }
+
+      final openingHour = int.tryParse(openingTimeParts[0]);
+      final openingMinute = int.tryParse(openingTimeParts[1]);
+      final closingHour = int.tryParse(closingTimeParts[0]);
+      final closingMinute = int.tryParse(closingTimeParts[1]);
+
+      if (openingHour == null || openingMinute == null || closingHour == null || closingMinute == null) {
+        print('Error: No se pudo convertir la hora o los minutos a números. Revisa que no haya caracteres extraños.');
+        setState(() => _isLoadingSlots = false);
+        return;
+      }
+
+      final openingTime = TimeOfDay(hour: openingHour, minute: openingMinute);
+      final closingTime = TimeOfDay(hour: closingHour, minute: closingMinute);
+      // --- FIN: Lógica de parseo robusta ---
+
       _slotsPerTime = salonData['slotsPerTime'] ?? 1;
-      final openingTimeParts = (salonData['openingTime'] as String).split(':');
-      final closingTimeParts = (salonData['closingTime'] as String).split(':');
-      final openingTime = TimeOfDay(
-        hour: int.parse(openingTimeParts[0]),
-        minute: int.parse(openingTimeParts[1]),
-      );
-      final closingTime = TimeOfDay(
-        hour: int.parse(closingTimeParts[0]),
-        minute: int.parse(closingTimeParts[1]),
-      );
-      final workDays = List<int>.from(salonData['workDays']);
 
       if (!workDays.contains(day.weekday)) {
         setState(() => _isLoadingSlots = false);
@@ -162,7 +205,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         _timeSlots = potentialSlots;
       });
     } catch (e) {
-      // print('Error al generar horarios: $e');
+      print('Error al generar horarios: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoadingSlots = false);

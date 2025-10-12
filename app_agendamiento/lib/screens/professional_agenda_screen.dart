@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:agend_app/config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:agend_app/services/notification_service.dart';
@@ -59,7 +61,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: Text('Mi Agenda'),
+            title: const Text('Mi Agenda'),
             centerTitle: false,
             actions: [
               IconButton(
@@ -67,9 +69,9 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
                 tooltip: 'Copiar mi enlace de reserva',
                 onPressed: () {
                   if (salonId != null && professionalId != null) {
-                    final webUrl = Uri.base;
+                    final baseUrl = kDebugMode ? Uri.base.origin : productionBaseUrl;
                     final bookingUrl =
-                        '${webUrl.origin}/#/book/$salonId/$professionalId';
+                        '$baseUrl/#/book/$salonId/$professionalId';
                     Clipboard.setData(ClipboardData(text: bookingUrl));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -98,7 +100,8 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
               ),
             ),
           ),
-          _buildAppointmentList(professionalId, startOfDay, endOfDay, theme),
+          _buildAppointmentList(
+              professionalId, salonId, startOfDay, endOfDay, theme),
         ],
       ),
     );
@@ -140,6 +143,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
 
   Widget _buildAppointmentList(
     String professionalId,
+    String salonId,
     DateTime startOfDay,
     DateTime endOfDay,
     ThemeData theme,
@@ -148,6 +152,7 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
       stream: FirebaseFirestore.instance
           .collection('appointments')
           .where('professionalId', isEqualTo: professionalId)
+          .where('salonId', isEqualTo: salonId)
           .where('status', whereIn: ['confirmada', 'pendiente', 'cancelada'])
           .where(
             'startTime',
@@ -189,8 +194,8 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
             delegate: SliverChildBuilderDelegate((context, index) {
               final appointmentDoc = appointments[index];
               final appointment = appointmentDoc.data() as Map<String, dynamic>;
-              final startTime = (appointment['startTime'] as Timestamp)
-                  .toDate();
+              final startTime =
+                  (appointment['startTime'] as Timestamp).toDate();
               final status = appointment['status'] ?? 'pendiente';
               final isCancelled = status == 'cancelada';
 
@@ -219,8 +224,8 @@ class _ProfessionalAgendaScreenState extends State<ProfessionalAgendaScreen> {
                           color: isCancelled
                               ? Colors.grey
                               : status == 'confirmada'
-                              ? Colors.green
-                              : Colors.orange,
+                                  ? Colors.green
+                                  : Colors.orange,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(

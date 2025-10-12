@@ -1,12 +1,14 @@
+
 // lib/screens/public_booking_page.dart
 
-import 'package:agend_app/screens/booking_calendar_screen.dart'; // Reutilizamos el calendario
+import 'package:agend_app/screens/booking_calendar_screen.dart';
 import 'package:agend_app/widgets/CustomCard.dart';
 import 'package:agend_app/widgets/custom_appbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class PublicBookingPage extends StatelessWidget {
+class PublicBookingPage extends StatefulWidget {
   final String salonId;
   final String professionalId;
 
@@ -16,14 +18,32 @@ class PublicBookingPage extends StatelessWidget {
     required this.professionalId,
   });
 
+  @override
+  State<PublicBookingPage> createState() => _PublicBookingPageState();
+}
+
+class _PublicBookingPageState extends State<PublicBookingPage> {
+  late Future<Map<String, dynamic>> _initialDataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialDataFuture = _fetchInitialData();
+  }
+
   Future<Map<String, dynamic>> _fetchInitialData() async {
+    // Asegurarse de que el usuario esté autenticado (anónimamente si es necesario)
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
+
     final salonDoc = await FirebaseFirestore.instance
         .collection('salones')
-        .doc(salonId)
+        .doc(widget.salonId)
         .get();
     final professionalDoc = await FirebaseFirestore.instance
         .collection('professionals')
-        .doc(professionalId)
+        .doc(widget.professionalId)
         .get();
     return {'salon': salonDoc, 'professional': professionalDoc};
   }
@@ -33,14 +53,14 @@ class PublicBookingPage extends StatelessWidget {
     return Scaffold(
       appBar: const CustomAppBar(title: 'Agendar Cita'),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchInitialData(),
+        future: _initialDataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(
-              child: Text('Error: No se pudo cargar la información.'),
+            return Center(
+              child: Text('Error al cargar la información: ${snapshot.error}'),
             );
           }
 
@@ -60,7 +80,6 @@ class PublicBookingPage extends StatelessWidget {
 
           return Column(
             children: [
-              // Encabezado con información del profesional y el salón
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -89,16 +108,18 @@ class PublicBookingPage extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-              // Lista de servicios
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('services')
-                      .where('salonId', isEqualTo: salonId)
+                      .where('salonId', isEqualTo: widget.salonId)
                       .snapshots(),
                   builder: (context, serviceSnapshot) {
-                    if (!serviceSnapshot.hasData) {
+                    if (serviceSnapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!serviceSnapshot.hasData || serviceSnapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text('No hay servicios disponibles.'));
                     }
 
                     return ListView.builder(
@@ -114,12 +135,11 @@ class PublicBookingPage extends StatelessWidget {
                           subtitle:
                               '\$${serviceData['precio']} - ${serviceData['duracion']} min',
                           onTap: () {
-                            // Al seleccionar un servicio, vamos directo al calendario
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BookingCalendarScreen(
-                                  salonId: salonId,
+                                  salonId: widget.salonId,
                                   professional: professionalDoc,
                                   service: serviceDoc,
                                 ),

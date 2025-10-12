@@ -25,14 +25,8 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
 
   void _continueAsGuest() async {
     try {
-      // Autentica al usuario como anónimo
+      // Autentica al usuario como anónimo. El AuthGate se encargará de la navegación.
       await FirebaseAuth.instance.signInAnonymously();
-      // Navega a la pantalla de selección de salón
-      Navigator.push(
-        // Cambiado a push para permitir volver a la pantalla de login
-        context,
-        MaterialPageRoute(builder: (context) => const SelectSalonScreen()),
-      );
     } catch (e) {
       // Manejo de errores en caso de que el inicio de sesión anónimo falle
       ScaffoldMessenger.of(context).showSnackBar(
